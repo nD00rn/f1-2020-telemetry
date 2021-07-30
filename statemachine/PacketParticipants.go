@@ -16,18 +16,16 @@ type PacketParticipantsData struct {
   Participants  [22]ParticipantData
 }
 
-func ProcessPacketParticipants(state *StateMachine) {
-  buffered := len(state.UnprocessedBuffer)
+func ProcessPacketParticipants(csm *CommunicationStateMachine, state *StateMachine) {
+  buffered := len(csm.UnprocessedBuffer)
 
   packetParticipants := PacketParticipantsData{}
   requiredSize := GetMemorySize(packetParticipants)
 
   if buffered >= requiredSize {
-    ToObject(state.UnprocessedBuffer[:], &packetParticipants)
-
-    // println(fmt.Sprintf("data participants: %+v", packetParticipants))
+    ToObject(csm.UnprocessedBuffer[:], &packetParticipants)
 
     state.ParticipantData = packetParticipants
-    state.RemoveFirstBytesFromBuffer(requiredSize)
+    csm.RemoveFirstBytesFromBuffer(requiredSize, state)
   }
 }

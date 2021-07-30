@@ -1,9 +1,5 @@
 package statemachine
 
-import (
-  "fmt"
-)
-
 type LobbyInfoData struct {
   AiControlled uint8
   TeamId       uint8
@@ -19,17 +15,15 @@ type PacketLobbyInfoData struct {
   LobbyInfoData [22]LobbyInfoData
 }
 
-func ProcessPacketLobbyInfo(state *StateMachine) {
-  buffered := len(state.UnprocessedBuffer)
+func ProcessPacketLobbyInfo(csm *CommunicationStateMachine, state *StateMachine) {
+  buffered := len(csm.UnprocessedBuffer)
 
   packetLobbyInfoData := PacketLobbyInfoData{}
   requiredSize := GetMemorySize(packetLobbyInfoData)
 
   if buffered >= requiredSize {
-    ToObject(state.UnprocessedBuffer[:], &packetLobbyInfoData)
+    ToObject(csm.UnprocessedBuffer[:], &packetLobbyInfoData)
 
-    println(fmt.Sprintf("data lobby info: %+v", packetLobbyInfoData))
-
-    state.RemoveFirstBytesFromBuffer(requiredSize)
+    csm.RemoveFirstBytesFromBuffer(requiredSize, state)
   }
 }

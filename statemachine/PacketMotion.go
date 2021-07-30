@@ -44,17 +44,17 @@ type PacketMotion struct {
   FrontWheelsAngle       float32
 }
 
-func ProcessPacketMotion(state *StateMachine) {
-  buffered := len(state.UnprocessedBuffer)
+func ProcessPacketMotion(csm *CommunicationStateMachine, state *StateMachine) {
+  buffered := len(csm.UnprocessedBuffer)
 
   packetMotion := PacketMotion{}
   requiredSize := GetMemorySize(packetMotion)
 
   if buffered >= requiredSize {
-    ToObject(state.UnprocessedBuffer[:], &packetMotion)
+    ToObject(csm.UnprocessedBuffer[:], &packetMotion)
 
     // println(fmt.Sprintf("data motion: %+v", packetMotion.CarMotionData[0]))
 
-    state.RemoveFirstBytesFromBuffer(requiredSize)
+    csm.RemoveFirstBytesFromBuffer(requiredSize, state)
   }
 }

@@ -27,17 +27,17 @@ type PacketCarTelemetryData struct {
   SuggestedGear                int8
 }
 
-func ProcessPacketCarTelemetry(state *StateMachine) {
-  buffered := len(state.UnprocessedBuffer)
+func ProcessPacketCarTelemetry(csm *CommunicationStateMachine, state *StateMachine) {
+  buffered := len(csm.UnprocessedBuffer)
 
   packetCarTelemetryData := PacketCarTelemetryData{}
   requiredSize := GetMemorySize(packetCarTelemetryData)
 
   if buffered >= requiredSize {
-    ToObject(state.UnprocessedBuffer[:], &packetCarTelemetryData)
+    ToObject(csm.UnprocessedBuffer[:], &packetCarTelemetryData)
 
     state.TelemetryData = packetCarTelemetryData
 
-    state.RemoveFirstBytesFromBuffer(requiredSize)
+    csm.RemoveFirstBytesFromBuffer(requiredSize, state)
   }
 }

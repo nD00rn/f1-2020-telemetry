@@ -32,17 +32,17 @@ type PacketCatSetupData struct {
   CarSetups [22]CarSetupData
 }
 
-func ProcessPacketCarSetups(state *StateMachine) {
-  buffered := len(state.UnprocessedBuffer)
+func ProcessPacketCarSetups(csm *CommunicationStateMachine, state *StateMachine) {
+  buffered := len(csm.UnprocessedBuffer)
 
   packetCarSetups := PacketCatSetupData{}
   requiredSize := GetMemorySize(packetCarSetups)
 
   if buffered >= requiredSize {
-    ToObject(state.UnprocessedBuffer[:], &packetCarSetups)
+    ToObject(csm.UnprocessedBuffer[:], &packetCarSetups)
 
     // println(fmt.Sprintf("data car setups: %+v", packetCarSetups))
 
-    state.RemoveFirstBytesFromBuffer(requiredSize)
+    csm.RemoveFirstBytesFromBuffer(requiredSize, state)
   }
 }

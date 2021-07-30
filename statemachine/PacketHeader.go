@@ -17,8 +17,8 @@ type PacketHeader struct {
   SecondPlayerCarIndex uint8
 }
 
-func ProcessPacketHeader(state *StateMachine) {
-  buffered := len(state.UnprocessedBuffer)
+func ProcessPacketHeader(csm *CommunicationStateMachine, state *StateMachine) {
+  buffered := len(csm.UnprocessedBuffer)
 
   packetHeader := PacketHeader{}
   requiredSize := GetMemorySize(packetHeader)
@@ -26,53 +26,53 @@ func ProcessPacketHeader(state *StateMachine) {
   if buffered >= requiredSize {
     header := packetHeader
 
-    ToObject(state.UnprocessedBuffer[:], &header)
+    ToObject(csm.UnprocessedBuffer[:], &header)
 
     if header.PackageFormat != 2020 {
       fmt.Println("improbable game version, discarding packet")
-      state.RemoveFirstBytesFromBuffer(requiredSize)
+      csm.RemoveFirstBytesFromBuffer(requiredSize, state)
       return
     }
 
     switch header.PacketId {
     case 0:
-      ProcessPacketMotion(state)
+      ProcessPacketMotion(csm, state)
       break
 
     case 1:
-      processPacketSession(state)
+      processPacketSession(csm, state)
       break
 
     case 2:
-      ProcessPacketLapData(state)
+      ProcessPacketLapData(csm, state)
       break
 
     case 3:
-      ProcessPacketEvent(state)
+      ProcessPacketEvent(csm, state)
       break
 
     case 4:
-      ProcessPacketParticipants(state)
+      ProcessPacketParticipants(csm, state)
       break
 
     case 5:
-      ProcessPacketCarSetups(state)
+      ProcessPacketCarSetups(csm, state)
       break
 
     case 6:
-      ProcessPacketCarTelemetry(state)
+      ProcessPacketCarTelemetry(csm, state)
       break
 
     case 7:
-      ProcessPacketCarStatus(state)
+      ProcessPacketCarStatus(csm, state)
       break
 
     case 8:
-      ProcessPacketFinalClassification(state)
+      ProcessPacketFinalClassification(csm, state)
       break
 
     case 9:
-      ProcessPacketLobbyInfo(state)
+      ProcessPacketLobbyInfo(csm, state)
       break
 
     default:

@@ -40,17 +40,17 @@ type PacketCarStatusData struct {
   CarStatusData [22]CarStatusData
 }
 
-func ProcessPacketCarStatus(state *StateMachine) {
-  buffered := len(state.UnprocessedBuffer)
+func ProcessPacketCarStatus(csm *CommunicationStateMachine, state *StateMachine) {
+  buffered := len(csm.UnprocessedBuffer)
 
   packetCarStatusData := PacketCarStatusData{}
   requiredSize := GetMemorySize(packetCarStatusData)
 
   if buffered >= requiredSize {
-    ToObject(state.UnprocessedBuffer[:], &packetCarStatusData)
+    ToObject(csm.UnprocessedBuffer[:], &packetCarStatusData)
 
     state.CarStatus = packetCarStatusData
 
-    state.RemoveFirstBytesFromBuffer(requiredSize)
+    csm.RemoveFirstBytesFromBuffer(requiredSize, state)
   }
 }

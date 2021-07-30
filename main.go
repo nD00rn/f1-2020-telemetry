@@ -1,6 +1,8 @@
 package main
 
 import (
+    "encoding/json"
+    "flag"
     "fmt"
     "math"
     "net"
@@ -8,8 +10,11 @@ import (
     "os/exec"
     "strconv"
     "strings"
+    "time"
 
+    "github.com/nD00rn/f1-2020-telemetry/rest"
     "github.com/nD00rn/f1-2020-telemetry/statemachine"
+    "github.com/nD00rn/f1-2020-telemetry/websocket"
 )
 
 var FgReset = "\033[39m"
@@ -31,7 +36,11 @@ var BgGray = "\033[47m"
 var FgWhite = "\033[97m"
 var BgWhite = "\033[47m"
 
+var localSm *statemachine.StateMachine
+
 func main() {
+    restOptions := processOptions()
+
     cmd := exec.Command("stty", "size")
     cmd.Stdin = os.Stdin
     out, err := cmd.Output()
@@ -52,18 +61,33 @@ func main() {
     }
     defer conn.Close()
 
+    csm := statemachine.CreateCommunicationStateMachine()
     sm := statemachine.CreateStateMachine()
+    localSm = &sm
 
+    // Start the REST server
+    rest.SetUpRestApiRouter(restOptions, &sm)
+
+    go websocket.Broadcast()
+
+    go constantStreamWebSocket()
+
+    // Mainly debug information
     ticksPerformed := 0
 
     for {
+        // the number of incoming bytes lays around the 1500 bytes per request.
+        // this should give some space whenever a bigger request comes in.
         buffer := make([]byte, 4096)
         n, _, err := conn.ReadFrom(buffer)
         if err != nil {
             panic(err)
         }
 
-        sm.Process(buffer[:n])
+        csm.Process(buffer[:n], &sm)
+
+        sm.PlayerOneIndex = sm.LapData.Header.PlayerCarIndex
+        sm.PlayerTwoIndex = sm.LapData.Header.SecondPlayerCarIndex
 
         playerIdOrder := [23]int{}
 
@@ -176,9 +200,9 @@ func main() {
 
             // Set time stamp first person crossed this path
             if j == 1 {
-                sm.DistanceHistory[totalDistance] = time
+                csm.DistanceHistory[totalDistance] = time
             } else {
-                myDeltaToLeader = sm.GetTimeForDistance(totalDistance, time, 50)
+                myDeltaToLeader = csm.GetTimeForDistance(totalDistance, time, 50)
                 deltaToNext = myDeltaToLeader - lastPersonDeltaTime
             }
             lastPersonDeltaTime = myDeltaToLeader
@@ -204,7 +228,7 @@ func main() {
 
             if sm.LapData.Header.SessionTime < 1 {
                 sm.ResetTimers()
-                sm.ResetHistory()
+                csm.ResetHistory()
             }
 
             if lap.BestLapTime < sm.FastestLapTime && lap.BestLapTime > 0 {
@@ -286,4 +310,31 @@ func drawTrackProcess(sm statemachine.StateMachine, playerIndex uint8, terminalW
         blocks = 0
     }
     fmt.Printf("[%-3s]|"+strings.Repeat("=", blocks)+">\n", name)
+}
+
+func processOptions() rest.Options {
+    restOptions := rest.DefaultOptions()
+    flag.UintVar(
+        &restOptions.Port,
+        "restport",
+        8000,
+        "port to allow REST communication",
+    )
+
+    flag.Parse()
+
+    return restOptions
+}
+
+func constantStreamWebSocket() {
+    for {
+        time.Sleep(250 * time.Millisecond)
+
+        marshal, err := json.Marshal(localSm)
+        if err != nil {
+            continue
+        }
+
+        websocket.BroadcastMessage(string(marshal))
+    }
 }

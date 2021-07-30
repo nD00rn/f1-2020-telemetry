@@ -27,17 +27,17 @@ type PacketFinalClassificationData struct {
   FinalClassificationData [22]FinalClassificationData
 }
 
-func ProcessPacketFinalClassification(state *StateMachine) {
-  buffered := len(state.UnprocessedBuffer)
+func ProcessPacketFinalClassification(csm *CommunicationStateMachine, state *StateMachine) {
+  buffered := len(csm.UnprocessedBuffer)
 
   packetClassificationData := PacketFinalClassificationData{}
   requiredSize := GetMemorySize(packetClassificationData)
 
   if buffered >= requiredSize {
-    ToObject(state.UnprocessedBuffer[:], &packetClassificationData)
+    ToObject(csm.UnprocessedBuffer[:], &packetClassificationData)
 
     println(fmt.Sprintf("data final classification: %+v", packetClassificationData))
 
-    state.RemoveFirstBytesFromBuffer(requiredSize)
+    csm.RemoveFirstBytesFromBuffer(requiredSize, state)
   }
 }

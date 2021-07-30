@@ -39,31 +39,17 @@ type PacketLapData struct {
   LapData [22]LapData
 }
 
-func ProcessPacketLapData(state *StateMachine) {
-  buffered := len(state.UnprocessedBuffer)
+func ProcessPacketLapData(csm *CommunicationStateMachine, state *StateMachine) {
+  buffered := len(csm.UnprocessedBuffer)
 
   packetLapData := PacketLapData{}
   requiredSize := GetMemorySize(packetLapData)
 
   if buffered >= requiredSize {
-    ToObject(state.UnprocessedBuffer[:], &packetLapData)
-
-    // println(fmt.Sprintf("data lap data: %+v", packetLapData))
-
-    // println(fmt.Sprintf("data lap data: %f %f | %f | S1:%d S2:%d S3:%d | S1:%d S2:%d LL:%f",
-    //   packetLapData.LapData[0].LapDistance,
-    //   packetLapData.LapData[0].TotalDistance,
-    //   packetLapData.LapData[0].CurrentLapTime,
-    //   packetLapData.LapData[0].BestLapSectorOneTimeInMs,
-    //   packetLapData.LapData[0].BestLapSectorTwoTimeInMs,
-    //   packetLapData.LapData[0].BestLapSectorThreeTimeInMs,
-    //   packetLapData.LapData[0].SectorOneTimeInMs,
-    //   packetLapData.LapData[0].SectorTwoTimeInMs,
-    //   packetLapData.LapData[0].LastLapTime,
-    //   ))
+    ToObject(csm.UnprocessedBuffer[:], &packetLapData)
 
     state.LapData = packetLapData
 
-    state.RemoveFirstBytesFromBuffer(requiredSize)
+    csm.RemoveFirstBytesFromBuffer(requiredSize, state)
   }
 }
