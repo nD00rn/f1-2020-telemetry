@@ -200,7 +200,10 @@ func main() {
 
             // Set time stamp first person crossed this path
             if j == 1 {
-                csm.DistanceHistory[totalDistance] = time
+                _, exists := csm.DistanceHistory[totalDistance]
+                if !exists {
+                    csm.DistanceHistory[totalDistance] = time
+                }
             } else {
                 myDeltaToLeader = csm.GetTimeForDistance(totalDistance, time, 50)
                 deltaToNext = myDeltaToLeader - lastPersonDeltaTime
