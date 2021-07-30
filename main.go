@@ -101,7 +101,9 @@ func main() {
 			playerIdOrder[carPos] = i
 		}
 
-		for j := 1; j <= 22; j++ {
+        textBuf := ""
+
+        for j := 1; j <= 22; j++ {
 			i := playerIdOrder[j]
 
 			if i == 0 {
@@ -109,7 +111,7 @@ func main() {
 			}
 
 			if uint8(i) == sm.LapData.Header.PlayerCarIndex || uint8(i) == sm.LapData.Header.SecondPlayerCarIndex {
-				drawTrackProcess(sm, uint8(i), width)
+				drawTrackProcess(sm, uint8(i), width, textBuf)
 			}
 		}
 		lastPersonDeltaTime := float32(0)
@@ -121,12 +123,7 @@ func main() {
 			fastestLapTime = float32(0)
 		}
 
-		// Render a couple of empty lines
-		for i := 0; i < 5; i++ {
-			fmt.Println()
-		}
-
-		fmt.Printf(
+        textBuf += fmt.Sprintf(
 			"%s: %s   |   %s [%s | %s]\n",
 			"delta to other player",
 			timeBetweenPlayers,
@@ -135,7 +132,7 @@ func main() {
 			sm.ParticipantData.Participants[sm.FastestLapPlayerIndex].Name[:][0:3],
 		)
 
-		fmt.Println(
+        textBuf += fmt.Sprintln(
 			"[NAME]          | LAST LAP | BEST S1 | BEST S2 | BEST S3 || LEADER | TO NEXT |",
 		)
 		for j := 1; j <= 22; j++ {
@@ -178,10 +175,10 @@ func main() {
 			}
 
 			if uint8(i) == sm.LapData.Header.PlayerCarIndex {
-				fmt.Print(BgGray)
+				textBuf += fmt.Sprint(BgGray)
 			}
 			if uint8(i) == sm.LapData.Header.SecondPlayerCarIndex {
-				fmt.Print(BgYellow)
+				textBuf += fmt.Sprint(BgYellow)
 			}
 
 			if sm.LapData.Header.SessionTime < 1 {
@@ -236,7 +233,7 @@ func main() {
 					FgReset,
 				)
 			}
-			fmt.Printf(
+            textBuf += fmt.Sprintf(
 				"[ %3s ] p%-2d l%-2d | %s | %s | %s | %s || %6.2f | %6.2f   ",
 				name,
 				lap.CarPosition,
@@ -249,12 +246,20 @@ func main() {
 				deltaToNext,
 			)
 
-			fmt.Print(FgReset + BgReset + "\n")
+            textBuf += fmt.Sprint(FgReset + BgReset + "\n")
 		}
+
+        f, err := os.Create("/tmp/f1.screen.tmp")
+        if err != nil {
+            panic(err)
+        }
+		_, _ = fmt.Fprint(f, textBuf)
+		_ = f.Close()
+		_ = os.Rename("/tmp/f1.screen.tmp", "/tmp/f1.screen.txt")
 	}
 }
 
-func drawTrackProcess(sm statemachine.StateMachine, playerIndex uint8, terminalWidth int) {
+func drawTrackProcess(sm statemachine.StateMachine, playerIndex uint8, terminalWidth int, textBuf string) {
 	if playerIndex == 255 {
 		// fmt.Printf("[%-3s]|" + strings.Repeat("=", 0) + ">\n", name)
 		return
@@ -269,7 +274,7 @@ func drawTrackProcess(sm statemachine.StateMachine, playerIndex uint8, terminalW
 	if blocks < 0 {
 		blocks = 0
 	}
-	fmt.Printf("[%-3s]|"+strings.Repeat("=", blocks)+">\n", name)
+    textBuf += fmt.Sprintf("[%-3s]|"+strings.Repeat("=", blocks)+">\n", name)
 }
 
 func processOptions() rest.Options {
