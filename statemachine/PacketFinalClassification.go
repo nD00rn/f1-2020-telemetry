@@ -1,9 +1,5 @@
 package statemachine
 
-import (
-  "fmt"
-)
-
 type FinalClassificationData struct {
   Position     uint8
   NumLaps      uint8
@@ -35,9 +31,6 @@ func ProcessPacketFinalClassification(csm *CommunicationStateMachine, state *Sta
 
   if buffered >= requiredSize {
     ToObject(csm.UnprocessedBuffer[:], &packetClassificationData)
-
-    println(fmt.Sprintf("data final classification: %+v", packetClassificationData))
-
     csm.RemoveFirstBytesFromBuffer(requiredSize, state)
   }
 }

@@ -68,8 +68,8 @@ func main() {
 	// Start the REST server
 	rest.SetUpRestApiRouter(restOptions, &sm)
 
+	// Set up websocket
 	go websocket.Broadcast()
-
 	go constantStreamWebSocket()
 
 	// Mainly debug information
@@ -234,17 +234,29 @@ func main() {
 				)
 			}
 			if sm.LapData.LapData[playerIndex].PitStatus != 0 {
-				name = fmt.Sprintf("%s%s%s",
+				name = fmt.Sprintf(
+					"%s%s%s",
 					FgRed,
 					name,
 					FgReset,
 				)
 			}
-            textBuf += fmt.Sprintf(
-				"[ %3s ] p%-2d l%-2d | %s | %s | %s | %s || %6.2f | %6.2f   ",
+			lapNumber := lap.CurrentLapNum
+			lapNumberString := fmt.Sprintf("l%d", lapNumber)
+			if sm.LapData.LapData[playerIndex].CurrentLapTime < 3 {
+				lapNumberString = fmt.Sprintf(
+					"%s%s%s",
+					FgRed,
+					lapNumberString,
+					FgReset,
+				)
+			}
+
+			textBuf += fmt.Sprintf(
+				"[ %3s ] p%-2d %s | %s | %s | %s | %s || %6.2f | %6.2f   ",
 				name,
 				lap.CarPosition,
-				lap.CurrentLapNum,
+				lapNumberString,
 				lastLapTime,
 				bestS1Time,
 				bestS2Time,
