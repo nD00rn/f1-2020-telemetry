@@ -19,9 +19,11 @@ All current features are showsn in the terminal itself and there is no user inte
 
 - [ ] Better delta calculations
   - Current implementation has some flaws. If people know where to have documentation of how delta calculation could be implemented please let me know.
-  
+
 - [ ] REST API support
   - For simple data retrieval of the game while is active
 
 - [ ] WebSocket support
   - This with the meaning that this program parses all the data and a web browser could make it look pretty.
+
+- [ ] Add support for F1 2021
