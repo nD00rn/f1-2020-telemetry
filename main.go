@@ -90,28 +90,28 @@ func main() {
 		sm.PlayerTwoIndex = sm.LapData.Header.SecondPlayerCarIndex
 
 		playerIdOrder := [23]int{}
-
-		// get order of ids by car position
-		for i := 0; i < 22; i++ {
-			if i == 0 {
-				continue
-			}
-
-			carPos := sm.LapData.LapData[i].CarPosition
-			playerIdOrder[carPos] = i
+		for idx := 0; idx < 23; idx++ {
+			playerIdOrder[idx] = 255
 		}
 
-        textBuf := ""
+		// get order of ids by car position
+		for playerIndex := 0; playerIndex < 22; playerIndex++ {
+			carPos := sm.LapData.LapData[playerIndex].CarPosition
+			playerIdOrder[carPos] = playerIndex
+		}
 
-        for j := 1; j <= 22; j++ {
-			i := playerIdOrder[j]
+		textBuf := ""
 
-			if i == 0 {
+		// Drawing progress lines
+		for carPosition := 1; carPosition <= 22; carPosition++ {
+			playerIndex := playerIdOrder[carPosition]
+
+			if playerIndex == 255 {
 				continue
 			}
 
-			if uint8(i) == sm.LapData.Header.PlayerCarIndex || uint8(i) == sm.LapData.Header.SecondPlayerCarIndex {
-				drawTrackProcess(sm, uint8(i), width, textBuf)
+			if uint8(playerIndex) == sm.LapData.Header.PlayerCarIndex || uint8(playerIndex) == sm.LapData.Header.SecondPlayerCarIndex {
+				drawTrackProcess(sm, uint8(playerIndex), width, &textBuf)
 			}
 		}
 		lastPersonDeltaTime := float32(0)
@@ -132,26 +132,26 @@ func main() {
 			sm.ParticipantData.Participants[sm.FastestLapPlayerIndex].Name[:][0:3],
 		)
 
-        textBuf += fmt.Sprintln(
+		textBuf += fmt.Sprintln(
 			"[NAME]          | LAST LAP | BEST S1 | BEST S2 | BEST S3 || LEADER | TO NEXT |",
 		)
-		for j := 1; j <= 22; j++ {
-			i := playerIdOrder[j]
+		for carPosition := 1; carPosition <= 22; carPosition++ {
+			playerIndex := playerIdOrder[carPosition]
 
-			if i == 0 {
+			if playerIndex == 255 {
 				continue
 			}
 
-			lap := sm.LapData.LapData[i]
-			participant := sm.ParticipantData.Participants[i]
+			lap := sm.LapData.LapData[playerIndex]
+			participant := sm.ParticipantData.Participants[playerIndex]
 
 			myDeltaToLeader := float32(0)
 			deltaToNext := float32(0)
-			totalDistance := uint32(sm.LapData.LapData[i].TotalDistance)
+			totalDistance := uint32(sm.LapData.LapData[playerIndex].TotalDistance)
 			sessionTime := sm.LapData.Header.SessionTime
 
 			// Set sessionTime stamp first person crossed this path
-			if j == 1 {
+			if carPosition == 1 {
 				_, exists := csm.DistanceHistory[totalDistance]
 				if !exists {
 					csm.DistanceHistory[totalDistance] = sessionTime
@@ -162,10 +162,10 @@ func main() {
 			}
 			lastPersonDeltaTime = myDeltaToLeader
 
-			if uint8(i) == sm.LapData.Header.PlayerCarIndex {
+			if uint8(playerIndex) == sm.LapData.Header.PlayerCarIndex {
 				sm.TimeToLeaderPlayerOne = myDeltaToLeader
 			}
-			if uint8(i) == sm.LapData.Header.SecondPlayerCarIndex {
+			if uint8(playerIndex) == sm.LapData.Header.SecondPlayerCarIndex {
 				sm.TimeToLeaderPlayerTwo = myDeltaToLeader
 			}
 
@@ -174,11 +174,11 @@ func main() {
 				continue
 			}
 
-			if uint8(i) == sm.LapData.Header.PlayerCarIndex {
-				textBuf += fmt.Sprint(BgGray)
+			if uint8(playerIndex) == sm.LapData.Header.PlayerCarIndex {
+				textBuf += fmt.Sprint(BgCyan)
 			}
-			if uint8(i) == sm.LapData.Header.SecondPlayerCarIndex {
-				textBuf += fmt.Sprint(BgYellow)
+			if uint8(playerIndex) == sm.LapData.Header.SecondPlayerCarIndex {
+				textBuf += fmt.Sprint(BgGreen)
 			}
 
 			if sm.LapData.Header.SessionTime < 1 {
@@ -188,19 +188,19 @@ func main() {
 
 			if lap.BestLapTime < sm.FastestLapTime && lap.BestLapTime > 0 {
 				sm.FastestLapTime = lap.BestLapTime
-				sm.FastestLapPlayerIndex = i
+				sm.FastestLapPlayerIndex = playerIndex
 			}
 			if lap.BestOverallSectorOneTimeInMs < sm.FastestS1Time && lap.BestOverallSectorOneTimeInMs > 0 {
 				sm.FastestS1Time = lap.BestOverallSectorOneTimeInMs
-				sm.FastestS1PlayerIndex = i
+				sm.FastestS1PlayerIndex = playerIndex
 			}
 			if lap.BestOverallSectorTwoTimeInMs < sm.FastestS2Time && lap.BestOverallSectorTwoTimeInMs > 0 {
 				sm.FastestS2Time = lap.BestOverallSectorTwoTimeInMs
-				sm.FastestS2PlayerIndex = i
+				sm.FastestS2PlayerIndex = playerIndex
 			}
 			if lap.BestOverallSectorThreeTimeInMs < sm.FastestS3Time && lap.BestOverallSectorThreeTimeInMs > 0 {
 				sm.FastestS3Time = lap.BestOverallSectorThreeTimeInMs
-				sm.FastestS3PlayerIndex = i
+				sm.FastestS3PlayerIndex = playerIndex
 			}
 
 			bestLapTime := fmt.Sprintf("%8.3f", lap.BestLapTime)
@@ -209,26 +209,33 @@ func main() {
 			bestS3Time := fmt.Sprintf("%7.3f", float32(lap.BestOverallSectorThreeTimeInMs)/1000)
 			lastLapTime := floatToTimeStamp(lap.LastLapTime)
 
-			if sm.FastestLapPlayerIndex == i {
-				bestLapTime = FgPurple + bestLapTime + FgReset
+			if sm.FastestLapPlayerIndex == playerIndex {
+				bestLapTime = FgRed + bestLapTime + FgReset
 			}
 
-			if sm.FastestS1PlayerIndex == i {
-				bestS1Time = FgPurple + bestS1Time + FgReset
+			if sm.FastestS1PlayerIndex == playerIndex {
+				bestS1Time = FgRed + bestS1Time + FgReset
 			}
 
-			if sm.FastestS2PlayerIndex == i {
-				bestS2Time = FgPurple + bestS2Time + FgReset
+			if sm.FastestS2PlayerIndex == playerIndex {
+				bestS2Time = FgRed + bestS2Time + FgReset
 			}
 
-			if sm.FastestS3PlayerIndex == i {
-				bestS3Time = FgPurple + bestS3Time + FgReset
+			if sm.FastestS3PlayerIndex == playerIndex {
+				bestS3Time = FgRed + bestS3Time + FgReset
 			}
 
 			name := string(participant.Name[:])[0:3]
-			if sm.TelemetryData.CarTelemetryData[i].Drs == 1 {
+			if sm.TelemetryData.CarTelemetryData[playerIndex].Drs == 1 {
 				name = fmt.Sprintf("%s%s%s",
 					FgGreen,
+					name,
+					FgReset,
+				)
+			}
+			if sm.LapData.LapData[playerIndex].PitStatus != 0 {
+				name = fmt.Sprintf("%s%s%s",
+					FgRed,
 					name,
 					FgReset,
 				)
@@ -259,9 +266,8 @@ func main() {
 	}
 }
 
-func drawTrackProcess(sm statemachine.StateMachine, playerIndex uint8, terminalWidth int, textBuf string) {
+func drawTrackProcess(sm statemachine.StateMachine, playerIndex uint8, terminalWidth int, textBuf *string) {
 	if playerIndex == 255 {
-		// fmt.Printf("[%-3s]|" + strings.Repeat("=", 0) + ">\n", name)
 		return
 	}
 	name := string(sm.ParticipantData.Participants[playerIndex].Name[:])[0:3]
@@ -274,7 +280,7 @@ func drawTrackProcess(sm statemachine.StateMachine, playerIndex uint8, terminalW
 	if blocks < 0 {
 		blocks = 0
 	}
-    textBuf += fmt.Sprintf("[%-3s]|"+strings.Repeat("=", blocks)+">\n", name)
+	*textBuf += fmt.Sprintf("[%-3s]|"+strings.Repeat("=", blocks)+">\n", name)
 }
 
 func processOptions() rest.Options {
