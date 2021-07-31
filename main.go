@@ -92,6 +92,8 @@ func main() {
 
 		textBuf := ""
 
+		drawMarshalZones(sm, terminalOptions.width, &textBuf, true)
+
 		// Drawing progress lines
 		for carPosition := 1; carPosition <= 22; carPosition++ {
 			playerIndex := playerIdOrder[carPosition]
@@ -101,29 +103,43 @@ func main() {
 			}
 
 			if uint8(playerIndex) == sm.LapData.Header.PlayerCarIndex || uint8(playerIndex) == sm.LapData.Header.SecondPlayerCarIndex {
-				drawTrackProcess(sm, uint8(playerIndex), width, &textBuf)
+				drawTrackProcess(sm, uint8(playerIndex), terminalOptions.width, &textBuf)
 			}
 		}
 		lastPersonDeltaTime := float32(0)
 		ticksPerformed++
-		timeBetweenPlayers := fmt.Sprintf("%s%s %5.2f %s%s", BgWhite, FgRed, sm.TimeBetweenPlayers(), BgReset, FgReset)
+		timeBetweenPlayers := fmt.Sprintf(
+			"%s%s%s%s%s",
+			BgWhite, FgRed,
+			floatToTimeStamp(sm.TimeBetweenPlayers()),
+			BgReset, FgReset,
+		)
 
 		fastestLapTime := sm.FastestLapTime
 		if fastestLapTime == math.MaxFloat32 {
 			fastestLapTime = float32(0)
 		}
 
-        textBuf += fmt.Sprintf(
-			"%s: %s   |   %s [%s | %s]\n",
-			"delta to other player",
+		fastestPerson := []byte{'X', 'X', 'X'}
+		if sm.FastestLapPlayerIndex != 255 {
+			fastestPerson = sm.ParticipantData.Participants[sm.FastestLapPlayerIndex].Name[:][0:3]
+		}
+		textBuf += fmt.Sprintf(
+			"%s: %s  |  %s %s%s[%s | %s]%s%s%s\n",
+			"Delta to other player",
 			timeBetweenPlayers,
 			"Fastest lap time",
+			BgWhite,
+			FgRed,
 			floatToTimeStamp(fastestLapTime),
-			sm.ParticipantData.Participants[sm.FastestLapPlayerIndex].Name[:][0:3],
+			fastestPerson,
+			FgReset,
+			BgReset,
+			"              |",
 		)
 
 		textBuf += fmt.Sprintln(
-			"[NAME]          | LAST LAP | BEST S1 | BEST S2 | BEST S3 || LEADER | TO NEXT |",
+			" P  L  NAME | LAST LAP | BEST S1 | BEST S2 | BEST S3 || LEADER |   NEXT |          |",
 		)
 		for carPosition := 1; carPosition <= 22; carPosition++ {
 			playerIndex := playerIdOrder[carPosition]
@@ -131,6 +147,8 @@ func main() {
 			if playerIndex == 255 {
 				continue
 			}
+
+			playerLineColour := BgReset
 
 			lap := sm.LapData.LapData[playerIndex]
 			participant := sm.ParticipantData.Participants[playerIndex]
@@ -165,11 +183,13 @@ func main() {
 			}
 
 			if uint8(playerIndex) == sm.LapData.Header.PlayerCarIndex {
-				textBuf += fmt.Sprint(BgCyan)
+				playerLineColour = BgYellow
 			}
 			if uint8(playerIndex) == sm.LapData.Header.SecondPlayerCarIndex {
-				textBuf += fmt.Sprint(BgGreen)
+				// if uint8(playerIndex) != sm.LapData.Header.PlayerCarIndex {
+				playerLineColour = BgBlue
 			}
+			textBuf += fmt.Sprint(playerLineColour)
 
 			if sm.LapData.Header.SessionTime < 1 {
 				sm.ResetTimers()
@@ -200,39 +220,75 @@ func main() {
 			lastLapTime := floatToTimeStamp(lap.LastLapTime)
 
 			if sm.FastestLapPlayerIndex == playerIndex {
-				bestLapTime = FgRed + bestLapTime + FgReset
+				bestLapTime = BgRed + bestLapTime + playerLineColour
 			}
 
 			if sm.FastestS1PlayerIndex == playerIndex {
-				bestS1Time = FgRed + bestS1Time + FgReset
+				bestS1Time = BgRed + bestS1Time + playerLineColour
 			}
 
 			if sm.FastestS2PlayerIndex == playerIndex {
-				bestS2Time = FgRed + bestS2Time + FgReset
+				bestS2Time = BgRed + bestS2Time + playerLineColour
 			}
 
 			if sm.FastestS3PlayerIndex == playerIndex {
-				bestS3Time = FgRed + bestS3Time + FgReset
+				bestS3Time = BgRed + bestS3Time + playerLineColour
 			}
 
-			name := string(participant.Name[:])[0:3]
+			additionalInformation := "   "
+			ersText := ""
+			switch sm.CarStatus.CarStatusData[playerIndex].ErsDeployMode {
+			case 0:
+				ersText = " "
+				break
+			case 1:
+				ersText = " "
+				break
+			case 2:
+				ersText = fmt.Sprintf("%s%s%s", BgGreen, "E", playerLineColour)
+				break
+			case 3:
+				ersText = fmt.Sprintf("%s%s%s", BgGreen, "E", playerLineColour)
+				break
+			}
+			penaltyTime := "  "
+			playerPenaltyTime := sm.LapData.LapData[playerIndex].Penalties
+			switch playerPenaltyTime {
+			case 0:
+				penaltyTime = "  "
+				break
+			default:
+				penaltyTime = fmt.Sprintf("%2d", playerPenaltyTime)
+				break
+			}
+
+			name := getParticipantName(participant)
 			if sm.TelemetryData.CarTelemetryData[playerIndex].Drs == 1 {
-				name = fmt.Sprintf("%s%s%s",
-					FgGreen,
-					name,
-					FgReset,
+				additionalInformation = fmt.Sprintf(
+					"%s%s%s",
+					BgGreen,
+					"DRS",
+					playerLineColour,
 				)
 			}
 			if sm.LapData.LapData[playerIndex].PitStatus != 0 {
-				name = fmt.Sprintf(
+				additionalInformation = fmt.Sprintf(
 					"%s%s%s",
-					FgRed,
-					name,
-					FgReset,
+					BgRed,
+					"PIT",
+					playerLineColour,
 				)
 			}
+
+			additionalInformation = fmt.Sprintf(
+				"%s %s %s",
+				ersText,
+				additionalInformation,
+				penaltyTime,
+			)
+
 			lapNumber := lap.CurrentLapNum
-			lapNumberString := fmt.Sprintf("l%d", lapNumber)
+			lapNumberString := fmt.Sprintf("%2d", lapNumber)
 			if sm.LapData.LapData[playerIndex].CurrentLapTime < 3 {
 				lapNumberString = fmt.Sprintf(
 					"%s%s%s",
@@ -243,32 +299,143 @@ func main() {
 			}
 
 			textBuf += fmt.Sprintf(
-				"[ %3s ] p%-2d %s | %s | %s | %s | %s || %6.2f | %6.2f   ",
-				name,
+				"%2d %s   %3s | %s | %s | %s | %s || %6.2f | %6.2f | %s |",
 				lap.CarPosition,
 				lapNumberString,
+				name,
 				lastLapTime,
 				bestS1Time,
 				bestS2Time,
 				bestS3Time,
 				myDeltaToLeader,
 				deltaToNext,
+				additionalInformation,
 			)
 
-            textBuf += fmt.Sprint(FgReset + BgReset + "\n")
+			textBuf += fmt.Sprint(FgReset + BgReset + "\n")
 		}
 
-        f, err := os.Create("/tmp/f1.screen.tmp")
-        if err != nil {
-            panic(err)
-        }
+		f, err := os.Create("/tmp/f1.screen.tmp")
+		if err != nil {
+			panic(err)
+		}
 		_, _ = fmt.Fprint(f, textBuf)
 		_ = f.Close()
 		_ = os.Rename("/tmp/f1.screen.tmp", "/tmp/f1.screen.txt")
 	}
 }
 
-func drawTrackProcess(sm statemachine.StateMachine, playerIndex uint8, terminalWidth int, textBuf *string) {
+func getParticipantName(participant statemachine.ParticipantData) string {
+	bytes := participant.Name[0:4]
+	for _, b := range bytes {
+		if b < 'A' || b > 'Z' {
+			return string(bytes)
+		}
+	}
+	return string(participant.Name[:])[0:3]
+}
+
+func drawMarshalZones(
+	sm statemachine.StateMachine,
+	terminalWidth uint,
+	textBuf *string,
+	showOtherPlayers bool,
+) {
+	numZones := sm.SessionData.NumMarshalZones
+	zones := sm.SessionData.MarshalZones
+
+	*textBuf += "[FLG]|"
+	usableTerminalWidth := terminalWidth - 7
+
+	for currentPixel := uint(0); currentPixel < usableTerminalWidth; currentPixel++ {
+		zoneToUse := 0
+		trackProgress := float32(1) / float32(usableTerminalWidth) * float32(currentPixel)
+
+		trackLength := sm.SessionData.TrackLength
+		trackText := " "
+
+		if showOtherPlayers {
+			for playerIndex := uint8(0); playerIndex < 22; playerIndex++ {
+				if playerIndex == sm.LapData.Header.PlayerCarIndex || playerIndex == sm.LapData.Header.SecondPlayerCarIndex {
+					continue
+				}
+				if sm.LapData.LapData[playerIndex].ResultStatus == 0 {
+					continue
+				}
+				lapPercentage := sm.LapData.LapData[playerIndex].LapDistance / float32(trackLength)
+
+				if isCorrectTrackPixel(lapPercentage, currentPixel, usableTerminalWidth) {
+					trackText = ">"
+					break
+				}
+			}
+		}
+
+		// Determine which zone data to use
+		for i, _ := range zones {
+			if zones[0].ZoneStart == 0 {
+				break
+			}
+
+			if isCorrectZone(i, numZones, trackProgress, zones) {
+				zoneToUse = i
+				break
+			}
+		}
+
+		trackColour := BgReset
+
+		switch zones[zoneToUse].ZoneFlag {
+		case 1:
+			trackText = " "
+			trackColour = BgGreen
+			break
+		case 2:
+			trackText = " "
+			trackColour = BgBlue
+			break
+		case 3:
+			trackText = " "
+			trackColour = BgYellow
+			break
+		case 4:
+			trackText = " "
+			trackColour = BgRed
+			break
+		}
+
+		*textBuf += trackColour + trackText
+	}
+	*textBuf += BgReset + "|\n"
+}
+
+func getCorrectTrackPixel(progress float32, maxPixels uint) uint {
+	for current := uint(0); current < maxPixels; current++ {
+		if isCorrectTrackPixel(progress, current, maxPixels) {
+			return current
+		}
+	}
+
+	return 0
+}
+
+func isCorrectTrackPixel(progress float32, currentPixel uint, maxPixels uint) bool {
+	current := float32(currentPixel) / float32(maxPixels)
+	next := float32(currentPixel+1) / float32(maxPixels)
+
+	return progress >= current && progress <= next
+}
+
+func isCorrectZone(zoneIndex int, numZones uint8, progress float32, zones [21]statemachine.MarshalZone) bool {
+	return uint8(zoneIndex+1) == numZones || progress > zones[zoneIndex].ZoneStart && progress < zones[zoneIndex+1].ZoneStart
+}
+
+func drawTrackProcess(
+	sm statemachine.StateMachine,
+	playerIndex uint8,
+	terminalWidth uint,
+	textBuf *string,
+) {
 	if playerIndex == 255 {
 		return
 	}
@@ -277,12 +444,33 @@ func drawTrackProcess(sm statemachine.StateMachine, playerIndex uint8, terminalW
 	lap := sm.LapData.LapData[playerIndex]
 	trackLength := sm.SessionData.TrackLength
 
-	lapPercentage := lap.LapDistance / float32(trackLength)
-	blocks := int(float32(terminalWidth-6) * lapPercentage)
-	if blocks < 0 {
-		blocks = 0
+	lapDistance := lap.LapDistance
+	if lapDistance < 0 {
+		lapDistance = 0
 	}
-	*textBuf += fmt.Sprintf("[%-3s]|"+strings.Repeat("=", blocks)+">\n", name)
+	lapPercentage := lapDistance / float32(trackLength)
+	if lapPercentage >= 1 {
+		lapPercentage = 0.99
+	}
+
+	availableBlockSpace := terminalWidth - 7
+	current := getCorrectTrackPixel(lapPercentage, availableBlockSpace)
+
+	passed := current
+	remaining := availableBlockSpace - current - 1
+
+	if remaining < 0 {
+		remaining = 0
+	}
+	if passed < 0 || passed > terminalWidth {
+		passed = 0
+	}
+
+	fmt.Printf("rem: %d, passed %d\n", remaining, passed)
+
+	arrowHead := ">"
+	*textBuf += fmt.Sprintf("[%-3s]|"+strings.Repeat(" ", int(passed))+arrowHead, name)
+	*textBuf += fmt.Sprintf(strings.Repeat(" ", int(remaining)) + "|\n")
 }
 
 func processOptions() (
