@@ -113,6 +113,11 @@ func (s *StateMachine) ResetTimers() {
 
 	s.TimeToLeaderPlayerOne = float32(0)
 	s.TimeToLeaderPlayerTwo = float32(0)
+
+	s.FastestLapPlayerIndex = 255
+	s.FastestS1PlayerIndex = 255
+	s.FastestS2PlayerIndex = 255
+	s.FastestS3PlayerIndex = 255
 }
 
 func (s *StateMachine) TimeBetweenPlayers() float32 {
