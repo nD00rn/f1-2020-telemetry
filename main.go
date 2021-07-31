@@ -7,8 +7,6 @@ import (
 	"math"
 	"net"
 	"os"
-	"os/exec"
-	"strconv"
 	"strings"
 	"time"
 
@@ -39,16 +37,8 @@ var BgWhite = "\033[47m"
 var localSm *statemachine.StateMachine
 
 func main() {
-	restOptions := processOptions()
-
-	cmd := exec.Command("stty", "size")
-	cmd.Stdin = os.Stdin
-	out, err := cmd.Output()
-	dimensions := string(out)
-	dimensions = strings.ReplaceAll(dimensions, "\n", "")
-	width, _ := strconv.Atoi(strings.Split(dimensions, " ")[1])
-
-	fmt.Printf("terminal width is %d\n", width)
+	restOptions, terminalOptions := processOptions()
+	fmt.Printf("terminal width is %d\n", terminalOptions.width)
 
 	addr := net.UDPAddr{
 		IP:   net.ParseIP("0.0.0.0"),
@@ -295,18 +285,29 @@ func drawTrackProcess(sm statemachine.StateMachine, playerIndex uint8, terminalW
 	*textBuf += fmt.Sprintf("[%-3s]|"+strings.Repeat("=", blocks)+">\n", name)
 }
 
-func processOptions() rest.Options {
+func processOptions() (
+	rest.Options,
+	TerminalOptions,
+) {
 	restOptions := rest.DefaultOptions()
+	terminalOptions := defaultTerminalOptions()
+
 	flag.UintVar(
 		&restOptions.Port,
 		"restport",
 		8000,
 		"port to allow REST communication",
 	)
+	flag.UintVar(
+		&terminalOptions.width,
+		"terminalwidth",
+		90,
+		"terminal width used to generate table",
+	)
 
 	flag.Parse()
 
-	return restOptions
+	return restOptions, terminalOptions
 }
 
 func constantStreamWebSocket() {
