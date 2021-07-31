@@ -272,10 +272,54 @@ func main() {
 				)
 			}
 			if sm.LapData.LapData[playerIndex].PitStatus != 0 {
+				deltaToNext = float32(0)
+				myDeltaToLeader = float32(0)
 				additionalInformation = fmt.Sprintf(
 					"%s%s%s",
 					BgRed,
 					"PIT",
+					playerLineColour,
+				)
+			}
+
+			switch sm.LapData.LapData[playerIndex].ResultStatus {
+			case 3:
+				deltaToNext = float32(0)
+				myDeltaToLeader = float32(0)
+				additionalInformation = fmt.Sprintf(
+					"%s%s%s",
+					BgYellow,
+					"FIN",
+					playerLineColour,
+				)
+				break
+			case 4:
+				deltaToNext = float32(0)
+				myDeltaToLeader = float32(0)
+				additionalInformation = fmt.Sprintf(
+					"%s%s%s",
+					BgRed,
+					"DSQ",
+					playerLineColour,
+				)
+				break
+			case 5:
+				deltaToNext = float32(0)
+				myDeltaToLeader = float32(0)
+				additionalInformation = fmt.Sprintf(
+					"%s%s%s",
+					BgRed,
+					"NCL",
+					playerLineColour,
+				)
+				break
+			case 6:
+				deltaToNext = float32(0)
+				myDeltaToLeader = float32(0)
+				additionalInformation = fmt.Sprintf(
+					"%s%s%s",
+					BgRed,
+					"OUT",
 					playerLineColour,
 				)
 			}
@@ -387,19 +431,19 @@ func drawMarshalZones(
 
 		switch zones[zoneToUse].ZoneFlag {
 		case 1:
-			trackText = " "
+			// trackText = " "
 			trackColour = BgGreen
 			break
 		case 2:
-			trackText = " "
+			// trackText = " "
 			trackColour = BgBlue
 			break
 		case 3:
-			trackText = " "
+			// trackText = " "
 			trackColour = BgYellow
 			break
 		case 4:
-			trackText = " "
+			// trackText = " "
 			trackColour = BgRed
 			break
 		}
@@ -512,6 +556,9 @@ func constantStreamWebSocket() {
 }
 
 func floatToTimeStamp(input float32) string {
+	if input < 0 {
+		input *= -1
+	}
 	minutes := uint8(input / 60)
 	seconds := input - float32(minutes*60)
 	return fmt.Sprintf("%d:%06.3f", minutes, seconds)
