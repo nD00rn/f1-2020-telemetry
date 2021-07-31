@@ -4,7 +4,7 @@ This is a personal project in which I capture the F1 2020 telemetry game data an
 
 # Current state
 
-All current features are showsn in the terminal itself and there is no user interaction possible from the terminal itself.
+All current features shown in the terminal itself and there is no user interaction possible from the terminal itself.
 
 * Shows lap data of all participants
 * Highlight users who have DRS active
@@ -13,17 +13,19 @@ All current features are showsn in the terminal itself and there is no user inte
 
 # Documentation
 
-* [F1 2020 UDP specificaion](https://forums.codemasters.com/topic/50942-f1-2020-udp-specification/?tab=comments#comment-515239)
+* [F1 2020 UDP specification](https://forums.codemasters.com/topic/50942-f1-2020-udp-specification/?tab=comments#comment-515239)
 
 # Ideas for the future
 
 - [ ] Better delta calculations
   - Current implementation has some flaws. If people know where to have documentation of how delta calculation could be implemented please let me know.
 
-- [ ] REST API support
+- [x] REST API support
   - For simple data retrieval of the game while is active
+  - Returns the current state of the state machine in JSON format
 
-- [ ] WebSocket support
-  - This with the meaning that this program parses all the data and a web browser could make it look pretty.
+- [x] WebSocket support
+  - This with the meaning that this program parses all the data, and a web browser could make it look pretty.
+  - Returns the current state of the state machine in JSON format
 
 - [ ] Add support for F1 2021
