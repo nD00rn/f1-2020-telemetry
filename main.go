@@ -510,8 +510,6 @@ func drawTrackProcess(
 		passed = 0
 	}
 
-	fmt.Printf("rem: %d, passed %d\n", remaining, passed)
-
 	arrowHead := ">"
 	*textBuf += fmt.Sprintf("[%-3s]|"+strings.Repeat(" ", int(passed))+arrowHead, name)
 	*textBuf += fmt.Sprintf(strings.Repeat(" ", int(remaining)) + "|\n")
