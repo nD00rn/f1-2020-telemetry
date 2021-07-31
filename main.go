@@ -135,11 +135,11 @@ func main() {
 			fastestPerson,
 			FgReset,
 			BgReset,
-			"              |",
+			"                |",
 		)
 
 		textBuf += fmt.Sprintln(
-			" P  L  NAME | LAST LAP | BEST S1 | BEST S2 | BEST S3 || LEADER |   NEXT |          |",
+			" P  L  NAME | LAST LAP | BEST S1 | BEST S2 | BEST S3 ||  LEADER  |   NEXT |          |",
 		)
 		for carPosition := 1; carPosition <= 22; carPosition++ {
 			playerIndex := playerIdOrder[carPosition]
@@ -299,7 +299,7 @@ func main() {
 			}
 
 			textBuf += fmt.Sprintf(
-				"%2d %s   %3s | %s | %s | %s | %s || %6.2f | %6.2f | %s |",
+				"%2d %s   %3s | %s | %s | %s | %s || %s | %6.2f | %s |",
 				lap.CarPosition,
 				lapNumberString,
 				name,
@@ -307,7 +307,7 @@ func main() {
 				bestS1Time,
 				bestS2Time,
 				bestS3Time,
-				myDeltaToLeader,
+				floatToTimeStamp(myDeltaToLeader),
 				deltaToNext,
 				additionalInformation,
 			)
