@@ -115,14 +115,50 @@ func main() {
 			BgReset, FgReset,
 		)
 
-		fastestLapTime := sm.FastestLapTime
-		if fastestLapTime == math.MaxFloat32 {
-			fastestLapTime = float32(0)
+		fastestS1 := uint16(math.MaxUint16)
+		fastestS2 := uint16(math.MaxUint16)
+		fastestS3 := uint16(math.MaxUint16)
+		fastestLap := float32(math.MaxFloat32)
+		fastestS1Idx := 255
+		fastestS2Idx := 255
+		fastestS3Idx := 255
+		fastestLapIdx := 255
+
+		for i, lapData := range sm.LapData.LapData {
+			if lapData.ResultStatus == 0 {
+				continue
+			}
+
+			bestS1 := lapData.BestOverallSectorOneTimeInMs
+			bestS2 := lapData.BestOverallSectorTwoTimeInMs
+			bestS3 := lapData.BestOverallSectorThreeTimeInMs
+			bestLap := lapData.BestLapTime
+
+			if bestS1 < fastestS1 && bestS1 > 1 {
+				fastestS1 = bestS1
+				fastestS1Idx = i
+			}
+			if bestS2 < fastestS2 && bestS2 > 1 {
+				fastestS2 = bestS2
+				fastestS2Idx = i
+			}
+			if bestS3 < fastestS3 && bestS3 > 1 {
+				fastestS3 = bestS3
+				fastestS3Idx = i
+			}
+			if bestLap < fastestLap && bestLap > float32(1) {
+				fastestLap = bestLap
+				fastestLapIdx = i
+			}
+		}
+
+		if fastestLap == math.MaxFloat32 {
+			fastestLap = float32(0)
 		}
 
 		fastestPerson := []byte{'X', 'X', 'X'}
-		if sm.FastestLapPlayerIndex != 255 {
-			fastestPerson = sm.ParticipantData.Participants[sm.FastestLapPlayerIndex].Name[:][0:3]
+		if fastestLapIdx != 255 {
+			fastestPerson = sm.ParticipantData.Participants[fastestLapIdx].Name[:][0:3]
 		}
 		textBuf += fmt.Sprintf(
 			"%s: %s  |  %s %s%s[%s | %s]%s%s%s\n",
@@ -131,7 +167,7 @@ func main() {
 			"Fastest lap time",
 			BgWhite,
 			FgRed,
-			floatToTimeStamp(fastestLapTime),
+			floatToTimeStamp(fastestLap),
 			fastestPerson,
 			FgReset,
 			BgReset,
@@ -186,7 +222,6 @@ func main() {
 				playerLineColour = BgYellow
 			}
 			if uint8(playerIndex) == sm.LapData.Header.SecondPlayerCarIndex {
-				// if uint8(playerIndex) != sm.LapData.Header.PlayerCarIndex {
 				playerLineColour = BgBlue
 			}
 			textBuf += fmt.Sprint(playerLineColour)
@@ -197,42 +232,25 @@ func main() {
 				csm.ResetHistory()
 			}
 
-			if lap.BestLapTime < sm.FastestLapTime && lap.BestLapTime > 0 {
-				sm.FastestLapTime = lap.BestLapTime
-				sm.FastestLapPlayerIndex = playerIndex
-			}
-			if lap.BestOverallSectorOneTimeInMs < sm.FastestS1Time && lap.BestOverallSectorOneTimeInMs > 0 {
-				sm.FastestS1Time = lap.BestOverallSectorOneTimeInMs
-				sm.FastestS1PlayerIndex = playerIndex
-			}
-			if lap.BestOverallSectorTwoTimeInMs < sm.FastestS2Time && lap.BestOverallSectorTwoTimeInMs > 0 {
-				sm.FastestS2Time = lap.BestOverallSectorTwoTimeInMs
-				sm.FastestS2PlayerIndex = playerIndex
-			}
-			if lap.BestOverallSectorThreeTimeInMs < sm.FastestS3Time && lap.BestOverallSectorThreeTimeInMs > 0 {
-				sm.FastestS3Time = lap.BestOverallSectorThreeTimeInMs
-				sm.FastestS3PlayerIndex = playerIndex
-			}
-
 			bestLapTime := fmt.Sprintf("%8.3f", lap.BestLapTime)
 			bestS1Time := fmt.Sprintf("%7.3f", float32(lap.BestOverallSectorOneTimeInMs)/1000)
 			bestS2Time := fmt.Sprintf("%7.3f", float32(lap.BestOverallSectorTwoTimeInMs)/1000)
 			bestS3Time := fmt.Sprintf("%7.3f", float32(lap.BestOverallSectorThreeTimeInMs)/1000)
 			lastLapTime := floatToTimeStamp(lap.LastLapTime)
 
-			if sm.FastestLapPlayerIndex == playerIndex {
+			if fastestLapIdx == playerIndex {
 				bestLapTime = BgRed + bestLapTime + playerLineColour
 			}
 
-			if sm.FastestS1PlayerIndex == playerIndex {
+			if fastestS1Idx == playerIndex {
 				bestS1Time = BgRed + bestS1Time + playerLineColour
 			}
 
-			if sm.FastestS2PlayerIndex == playerIndex {
+			if fastestS2Idx == playerIndex {
 				bestS2Time = BgRed + bestS2Time + playerLineColour
 			}
 
-			if sm.FastestS3PlayerIndex == playerIndex {
+			if fastestS3Idx == playerIndex {
 				bestS3Time = BgRed + bestS3Time + playerLineColour
 			}
 
