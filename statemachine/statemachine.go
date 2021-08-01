@@ -37,10 +37,7 @@ func CreateCommunicationStateMachine() CommunicationStateMachine {
 }
 
 func CreateStateMachine() StateMachine {
-	sm := StateMachine{
-		// UnprocessedBuffer: []byte{},
-		// DistanceHistory:   map[uint32]float32{},
-	}
+	sm := StateMachine{}
 	sm.ResetTimers()
 	return sm
 }
