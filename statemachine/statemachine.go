@@ -3,7 +3,6 @@ package statemachine
 import (
 	"bytes"
 	"encoding/binary"
-	"math"
 )
 
 type CommunicationStateMachine struct {
@@ -12,21 +11,14 @@ type CommunicationStateMachine struct {
 }
 
 type StateMachine struct {
-	LapData               PacketLapData
-	TelemetryData         PacketCarTelemetryData
-	ParticipantData       PacketParticipantsData
-	EventData             PacketEventData
-	SessionData           PacketSessionData
-	SpeedTraps            [22]SpeedTrap
-	CarStatus             PacketCarStatusData
-	FastestLapPlayerIndex int
-	FastestLapTime        float32
-	FastestS1PlayerIndex  int
-	FastestS1Time         uint16
-	FastestS2PlayerIndex  int
-	FastestS2Time         uint16
-	FastestS3PlayerIndex  int
-	FastestS3Time         uint16
+	LapData         PacketLapData
+	TelemetryData   PacketCarTelemetryData
+	ParticipantData PacketParticipantsData
+	EventData       PacketEventData
+	SessionData     PacketSessionData
+	SpeedTraps      [22]SpeedTrap
+	CarStatus       PacketCarStatusData
+
 	TimeToLeaderPlayerOne float32
 	TimeToLeaderPlayerTwo float32
 	PlayerOneIndex        uint8
@@ -106,18 +98,8 @@ func (csm *CommunicationStateMachine) GetTimeForDistance(
 }
 
 func (s *StateMachine) ResetTimers() {
-	s.FastestLapTime = math.MaxFloat32
-	s.FastestS1Time = math.MaxUint16
-	s.FastestS2Time = math.MaxUint16
-	s.FastestS3Time = math.MaxUint16
-
 	s.TimeToLeaderPlayerOne = float32(0)
 	s.TimeToLeaderPlayerTwo = float32(0)
-
-	s.FastestLapPlayerIndex = 255
-	s.FastestS1PlayerIndex = 255
-	s.FastestS2PlayerIndex = 255
-	s.FastestS3PlayerIndex = 255
 }
 
 func (s *StateMachine) TimeBetweenPlayers() float32 {
