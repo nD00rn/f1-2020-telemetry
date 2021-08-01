@@ -191,7 +191,8 @@ func main() {
 			}
 			textBuf += fmt.Sprint(playerLineColour)
 
-			if sm.LapData.Header.SessionTime < 1 {
+			if sm.LapData.Header.SessionTime < 1 || sm.LastSessionUid != sm.LapData.Header.SessionUid {
+				sm.LastSessionUid = sm.LapData.Header.SessionUid
 				sm.ResetTimers()
 				csm.ResetHistory()
 			}

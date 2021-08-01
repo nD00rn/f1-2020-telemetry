@@ -23,6 +23,8 @@ type StateMachine struct {
 	TimeToLeaderPlayerTwo float32
 	PlayerOneIndex        uint8
 	PlayerTwoIndex        uint8
+
+	LastSessionUid uint64
 }
 
 func CreateCommunicationStateMachine() CommunicationStateMachine {
