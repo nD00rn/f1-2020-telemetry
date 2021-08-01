@@ -71,6 +71,7 @@ func ProcessPacketHeader(csm *CommunicationStateMachine, state *StateMachine) {
 			break
 
 		default:
+			csm.RemoveFirstBytesFromBuffer(1, state)
 			break
 		}
 	}
