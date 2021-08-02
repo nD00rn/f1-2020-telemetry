@@ -32,7 +32,6 @@ func SetUpRestApiRouter(options Options, stateMachine *statemachine.StateMachine
     r := mux.NewRouter()
     r.HandleFunc("/", homeHandler).Methods("GET")
     r.HandleFunc("/socket", websocket.SocketHandler)
-    r.HandleFunc("/player/{playerId}", playerIdHandler).Methods("GET")
     http.Handle("/", r)
 
     srv := &http.Server{
@@ -56,31 +55,4 @@ func SetUpRestApiRouter(options Options, stateMachine *statemachine.StateMachine
 func homeHandler(w http.ResponseWriter, r *http.Request) {
     w.WriteHeader(http.StatusOK)
     _ = json.NewEncoder(w).Encode(sm)
-}
-
-func playerIdHandler(w http.ResponseWriter, r *http.Request) {
-    // vars := mux.Vars(r)
-    // playerId := vars["playerId"]
-
-    playerIndex := sm.PlayerOneIndex
-    car := sm.TelemetryData.CarTelemetryData[playerIndex]
-    lap := sm.LapData.LapData[playerIndex]
-    session := sm.SessionData
-
-    speed := car.Speed
-    gear := car.Gear
-    lapNumber := lap.CurrentLapNum
-    currentLapDistance := lap.LapDistance
-    trackDistance := float32(session.TrackLength)
-    lapPercentage := currentLapDistance / trackDistance
-
-    response := PlayerCar{
-        Speed:      speed,
-        Gear:       gear,
-        Lap:        lapNumber,
-        LapPercent: lapPercentage,
-    }
-
-    w.WriteHeader(200)
-    _ = json.NewEncoder(w).Encode(response)
 }
