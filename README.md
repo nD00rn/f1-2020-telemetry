@@ -24,12 +24,12 @@ All current features shown in the terminal itself and there is no user interacti
 
 - [x] REST API support
   - For simple data retrieval of the game while is active
-  - Returns the current state of the state machine in JSON format via the `/` endpoint
+  - Returns the current state of the state machine in JSON format via the `/rest` endpoint
   - Has ability to fetch rendering of screenshot via `/terminal` end point
 
 - [x] WebSocket support
   - This with the meaning that this program parses all the data, and a web browser could make it look pretty.
-  - Returns the current state of the state machine in JSON format
+  - Returns the current state of the state machine in JSON format via the `/socket` endpoint
 
 - [ ] Add support for F1 2021
 
