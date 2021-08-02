@@ -1,18 +1,18 @@
 package main
 
 import (
-	"encoding/json"
-	"flag"
-	"fmt"
-	"math"
-	"net"
-	"os"
-	"strings"
-	"time"
+    "encoding/json"
+    "flag"
+    "fmt"
+    "math"
+    "net"
+    "os"
+    "strings"
+    "time"
 
-	"github.com/nD00rn/f1-2020-telemetry/rest"
-	"github.com/nD00rn/f1-2020-telemetry/statemachine"
-	"github.com/nD00rn/f1-2020-telemetry/websocket"
+    "github.com/nD00rn/f1-2020-telemetry/rest"
+    "github.com/nD00rn/f1-2020-telemetry/statemachine"
+    "github.com/nD00rn/f1-2020-telemetry/websocket"
 )
 
 var FgReset = "\033[39m"
@@ -37,546 +37,546 @@ var BgWhite = "\033[47m"
 var localSm *statemachine.StateMachine
 
 func main() {
-	restOptions, terminalOptions := processOptions()
-	fmt.Printf("terminal width is %d\n", terminalOptions.width)
+    restOptions, terminalOptions := processOptions()
+    fmt.Printf("terminal width is %d\n", terminalOptions.width)
 
-	addr := net.UDPAddr{
-		IP:   net.ParseIP("0.0.0.0"),
-		Port: 20777,
-	}
+    addr := net.UDPAddr{
+        IP:   net.ParseIP("0.0.0.0"),
+        Port: 20777,
+    }
 
-	conn, err := net.ListenUDP("udp", &addr)
-	if err != nil {
-		panic(err)
-	}
-	defer conn.Close()
+    conn, err := net.ListenUDP("udp", &addr)
+    if err != nil {
+        panic(err)
+    }
+    defer conn.Close()
 
-	csm := statemachine.CreateCommunicationStateMachine()
-	sm := statemachine.CreateStateMachine()
-	localSm = &sm
+    csm := statemachine.CreateCommunicationStateMachine()
+    sm := statemachine.CreateStateMachine()
+    localSm = &sm
 
-	// Start the REST server
-	rest.SetUpRestApiRouter(restOptions, &sm)
+    // Start the REST server
+    rest.SetUpRestApiRouter(restOptions, &sm)
 
-	// Set up websocket
-	go websocket.Broadcast()
-	go constantStreamWebSocket()
+    // Set up websocket
+    go websocket.Broadcast()
+    go constantStreamWebSocket()
 
-	// Mainly debug information
-	ticksPerformed := 0
+    // Mainly debug information
+    ticksPerformed := 0
 
-	for {
-		// the number of incoming bytes lays around the 1500 bytes per request.
-		// this should give some space whenever a bigger request comes in.
-		buffer := make([]byte, 4096)
-		n, _, err := conn.ReadFrom(buffer)
-		if err != nil {
-			panic(err)
-		}
+    for {
+        // the number of incoming bytes lays around the 1500 bytes per request.
+        // this should give some space whenever a bigger request comes in.
+        buffer := make([]byte, 4096)
+        n, _, err := conn.ReadFrom(buffer)
+        if err != nil {
+            panic(err)
+        }
 
-		csm.Process(buffer[:n], &sm)
+        csm.Process(buffer[:n], &sm)
 
-		sm.PlayerOneIndex = sm.LapData.Header.PlayerCarIndex
-		sm.PlayerTwoIndex = sm.LapData.Header.SecondPlayerCarIndex
+        sm.PlayerOneIndex = sm.LapData.Header.PlayerCarIndex
+        sm.PlayerTwoIndex = sm.LapData.Header.SecondPlayerCarIndex
 
-		playerIdOrder := [23]int{}
-		for idx := 0; idx < 23; idx++ {
-			playerIdOrder[idx] = 255
-		}
+        playerIdOrder := [23]int{}
+        for idx := 0; idx < 23; idx++ {
+            playerIdOrder[idx] = 255
+        }
 
-		// get order of ids by car position
-		for playerIndex := 0; playerIndex < 22; playerIndex++ {
-			carPos := sm.LapData.LapData[playerIndex].CarPosition
-			playerIdOrder[carPos] = playerIndex
-		}
+        // get order of ids by car position
+        for playerIndex := 0; playerIndex < 22; playerIndex++ {
+            carPos := sm.LapData.LapData[playerIndex].CarPosition
+            playerIdOrder[carPos] = playerIndex
+        }
 
-		textBuf := ""
+        textBuf := ""
 
-		drawMarshalZones(sm, terminalOptions.width, &textBuf, true)
+        drawMarshalZones(sm, terminalOptions.width, &textBuf, true)
 
-		// Drawing progress lines
-		for carPosition := 1; carPosition <= 22; carPosition++ {
-			playerIndex := playerIdOrder[carPosition]
+        // Drawing progress lines
+        for carPosition := 1; carPosition <= 22; carPosition++ {
+            playerIndex := playerIdOrder[carPosition]
 
-			if playerIndex == 255 {
-				continue
-			}
+            if playerIndex == 255 {
+                continue
+            }
 
-			if uint8(playerIndex) == sm.LapData.Header.PlayerCarIndex || uint8(playerIndex) == sm.LapData.Header.SecondPlayerCarIndex {
-				drawTrackProcess(sm, uint8(playerIndex), terminalOptions.width, &textBuf)
-			}
-		}
-		lastPersonDeltaTime := float32(0)
-		ticksPerformed++
-		timeBetweenPlayers := fmt.Sprintf(
-			"%s%s%s%s%s",
-			BgWhite, FgRed,
-			floatToTimeStamp(sm.TimeBetweenPlayers()),
-			BgReset, FgReset,
-		)
+            if uint8(playerIndex) == sm.LapData.Header.PlayerCarIndex || uint8(playerIndex) == sm.LapData.Header.SecondPlayerCarIndex {
+                drawTrackProcess(sm, uint8(playerIndex), terminalOptions.width, &textBuf)
+            }
+        }
+        lastPersonDeltaTime := float32(0)
+        ticksPerformed++
+        timeBetweenPlayers := fmt.Sprintf(
+            "%s%s%s%s%s",
+            BgWhite, FgRed,
+            floatToTimeStamp(sm.TimeBetweenPlayers()),
+            BgReset, FgReset,
+        )
 
-		fastestS1 := uint16(math.MaxUint16)
-		fastestS2 := uint16(math.MaxUint16)
-		fastestS3 := uint16(math.MaxUint16)
-		fastestLap := float32(math.MaxFloat32)
-		fastestS1Idx := 255
-		fastestS2Idx := 255
-		fastestS3Idx := 255
-		fastestLapIdx := 255
+        fastestS1 := uint16(math.MaxUint16)
+        fastestS2 := uint16(math.MaxUint16)
+        fastestS3 := uint16(math.MaxUint16)
+        fastestLap := float32(math.MaxFloat32)
+        fastestS1Idx := 255
+        fastestS2Idx := 255
+        fastestS3Idx := 255
+        fastestLapIdx := 255
 
-		for i, lapData := range sm.LapData.LapData {
-			if lapData.ResultStatus == 0 {
-				continue
-			}
+        for i, lapData := range sm.LapData.LapData {
+            if lapData.ResultStatus == 0 {
+                continue
+            }
 
-			bestS1 := lapData.BestOverallSectorOneTimeInMs
-			bestS2 := lapData.BestOverallSectorTwoTimeInMs
-			bestS3 := lapData.BestOverallSectorThreeTimeInMs
-			bestLap := lapData.BestLapTime
+            bestS1 := lapData.BestOverallSectorOneTimeInMs
+            bestS2 := lapData.BestOverallSectorTwoTimeInMs
+            bestS3 := lapData.BestOverallSectorThreeTimeInMs
+            bestLap := lapData.BestLapTime
 
-			if bestS1 < fastestS1 && bestS1 > 1 {
-				fastestS1 = bestS1
-				fastestS1Idx = i
-			}
-			if bestS2 < fastestS2 && bestS2 > 1 {
-				fastestS2 = bestS2
-				fastestS2Idx = i
-			}
-			if bestS3 < fastestS3 && bestS3 > 1 {
-				fastestS3 = bestS3
-				fastestS3Idx = i
-			}
-			if bestLap < fastestLap && bestLap > float32(1) {
-				fastestLap = bestLap
-				fastestLapIdx = i
-			}
-		}
+            if bestS1 < fastestS1 && bestS1 > 1 {
+                fastestS1 = bestS1
+                fastestS1Idx = i
+            }
+            if bestS2 < fastestS2 && bestS2 > 1 {
+                fastestS2 = bestS2
+                fastestS2Idx = i
+            }
+            if bestS3 < fastestS3 && bestS3 > 1 {
+                fastestS3 = bestS3
+                fastestS3Idx = i
+            }
+            if bestLap < fastestLap && bestLap > float32(1) {
+                fastestLap = bestLap
+                fastestLapIdx = i
+            }
+        }
 
-		if fastestLap == math.MaxFloat32 {
-			fastestLap = float32(0)
-		}
+        if fastestLap == math.MaxFloat32 {
+            fastestLap = float32(0)
+        }
 
-		fastestPerson := []byte{'X', 'X', 'X'}
-		if fastestLapIdx != 255 {
-			fastestPerson = sm.ParticipantData.Participants[fastestLapIdx].Name[:][0:3]
-		}
-		textBuf += fmt.Sprintf(
-			"%s: %s  |  %s %s%s[%s | %s]%s%s%s\n",
-			"Delta to other player",
-			timeBetweenPlayers,
-			"Fastest lap time",
-			BgWhite,
-			FgRed,
-			floatToTimeStamp(fastestLap),
-			fastestPerson,
-			FgReset,
-			BgReset,
-			"                |",
-		)
+        fastestPerson := []byte{'X', 'X', 'X'}
+        if fastestLapIdx != 255 {
+            fastestPerson = sm.ParticipantData.Participants[fastestLapIdx].Name[:][0:3]
+        }
+        textBuf += fmt.Sprintf(
+            "%s: %s  |  %s %s%s[%s | %s]%s%s%s\n",
+            "Delta to other player",
+            timeBetweenPlayers,
+            "Fastest lap time",
+            BgWhite,
+            FgRed,
+            floatToTimeStamp(fastestLap),
+            fastestPerson,
+            FgReset,
+            BgReset,
+            "                |",
+        )
 
-		textBuf += fmt.Sprintln(
-			" P  L  NAME | LAST LAP | BEST S1 | BEST S2 | BEST S3 ||  LEADER  |   NEXT |          |",
-		)
-		for carPosition := 1; carPosition <= 22; carPosition++ {
-			playerIndex := playerIdOrder[carPosition]
+        textBuf += fmt.Sprintln(
+            " P  L  NAME | LAST LAP | BEST S1 | BEST S2 | BEST S3 ||  LEADER  |   NEXT |          |",
+        )
+        for carPosition := 1; carPosition <= 22; carPosition++ {
+            playerIndex := playerIdOrder[carPosition]
 
-			if playerIndex == 255 {
-				continue
-			}
+            if playerIndex == 255 {
+                continue
+            }
 
-			playerLineColour := BgReset
+            playerLineColour := BgReset
 
-			lap := sm.LapData.LapData[playerIndex]
-			participant := sm.ParticipantData.Participants[playerIndex]
+            lap := sm.LapData.LapData[playerIndex]
+            participant := sm.ParticipantData.Participants[playerIndex]
 
-			myDeltaToLeader := float32(0)
-			deltaToNext := float32(0)
-			totalDistance := uint32(sm.LapData.LapData[playerIndex].TotalDistance)
-			sessionTime := sm.LapData.Header.SessionTime
+            myDeltaToLeader := float32(0)
+            deltaToNext := float32(0)
+            totalDistance := uint32(sm.LapData.LapData[playerIndex].TotalDistance)
+            sessionTime := sm.LapData.Header.SessionTime
 
-			// Set sessionTime stamp first person crossed this path
-			if carPosition == 1 {
-				_, exists := csm.DistanceHistory[totalDistance]
-				if !exists {
-					csm.DistanceHistory[totalDistance] = sessionTime
-				}
-			} else {
-				myDeltaToLeader = csm.GetTimeForDistance(totalDistance, sessionTime, 50)
-				deltaToNext = myDeltaToLeader - lastPersonDeltaTime
-			}
-			lastPersonDeltaTime = myDeltaToLeader
+            // Set sessionTime stamp first person crossed this path
+            if carPosition == 1 {
+                _, exists := csm.DistanceHistory[totalDistance]
+                if !exists {
+                    csm.DistanceHistory[totalDistance] = sessionTime
+                }
+            } else {
+                myDeltaToLeader = csm.GetTimeForDistance(totalDistance, sessionTime, 50)
+                deltaToNext = myDeltaToLeader - lastPersonDeltaTime
+            }
+            lastPersonDeltaTime = myDeltaToLeader
 
-			if uint8(playerIndex) == sm.LapData.Header.PlayerCarIndex {
-				sm.TimeToLeaderPlayerOne = myDeltaToLeader
-			}
-			if uint8(playerIndex) == sm.LapData.Header.SecondPlayerCarIndex {
-				sm.TimeToLeaderPlayerTwo = myDeltaToLeader
-			}
+            if uint8(playerIndex) == sm.LapData.Header.PlayerCarIndex {
+                sm.TimeToLeaderPlayerOne = myDeltaToLeader
+            }
+            if uint8(playerIndex) == sm.LapData.Header.SecondPlayerCarIndex {
+                sm.TimeToLeaderPlayerTwo = myDeltaToLeader
+            }
 
-			if lap.ResultStatus == 0 {
-				// You are an invalid player, ignore
-				continue
-			}
+            if lap.ResultStatus == 0 {
+                // You are an invalid player, ignore
+                continue
+            }
 
-			if uint8(playerIndex) == sm.LapData.Header.PlayerCarIndex {
-				playerLineColour = BgYellow
-			}
-			if uint8(playerIndex) == sm.LapData.Header.SecondPlayerCarIndex {
-				playerLineColour = BgBlue
-			}
-			textBuf += fmt.Sprint(playerLineColour)
+            if uint8(playerIndex) == sm.LapData.Header.PlayerCarIndex {
+                playerLineColour = BgYellow
+            }
+            if uint8(playerIndex) == sm.LapData.Header.SecondPlayerCarIndex {
+                playerLineColour = BgBlue
+            }
+            textBuf += fmt.Sprint(playerLineColour)
 
-			if sm.LapData.Header.SessionTime < 1 || sm.LastSessionUid != sm.LapData.Header.SessionUid {
-				sm.LastSessionUid = sm.LapData.Header.SessionUid
-				sm.ResetTimers()
-				csm.ResetHistory()
-			}
+            if sm.LapData.Header.SessionTime < 1 || sm.LastSessionUid != sm.LapData.Header.SessionUid {
+                sm.LastSessionUid = sm.LapData.Header.SessionUid
+                sm.ResetTimers()
+                csm.ResetHistory()
+            }
 
-			bestLapTime := fmt.Sprintf("%8.3f", lap.BestLapTime)
-			bestS1Time := fmt.Sprintf("%7.3f", float32(lap.BestOverallSectorOneTimeInMs)/1000)
-			bestS2Time := fmt.Sprintf("%7.3f", float32(lap.BestOverallSectorTwoTimeInMs)/1000)
-			bestS3Time := fmt.Sprintf("%7.3f", float32(lap.BestOverallSectorThreeTimeInMs)/1000)
-			lastLapTime := floatToTimeStamp(lap.LastLapTime)
+            bestLapTime := fmt.Sprintf("%8.3f", lap.BestLapTime)
+            bestS1Time := fmt.Sprintf("%7.3f", float32(lap.BestOverallSectorOneTimeInMs)/1000)
+            bestS2Time := fmt.Sprintf("%7.3f", float32(lap.BestOverallSectorTwoTimeInMs)/1000)
+            bestS3Time := fmt.Sprintf("%7.3f", float32(lap.BestOverallSectorThreeTimeInMs)/1000)
+            lastLapTime := floatToTimeStamp(lap.LastLapTime)
 
-			if fastestLapIdx == playerIndex {
-				bestLapTime = BgRed + bestLapTime + playerLineColour
-			}
+            if fastestLapIdx == playerIndex {
+                bestLapTime = BgRed + bestLapTime + playerLineColour
+            }
 
-			if fastestS1Idx == playerIndex {
-				bestS1Time = BgRed + bestS1Time + playerLineColour
-			}
+            if fastestS1Idx == playerIndex {
+                bestS1Time = BgRed + bestS1Time + playerLineColour
+            }
 
-			if fastestS2Idx == playerIndex {
-				bestS2Time = BgRed + bestS2Time + playerLineColour
-			}
+            if fastestS2Idx == playerIndex {
+                bestS2Time = BgRed + bestS2Time + playerLineColour
+            }
 
-			if fastestS3Idx == playerIndex {
-				bestS3Time = BgRed + bestS3Time + playerLineColour
-			}
+            if fastestS3Idx == playerIndex {
+                bestS3Time = BgRed + bestS3Time + playerLineColour
+            }
 
-			additionalInformation := "   "
-			ersText := ""
-			switch sm.CarStatus.CarStatusData[playerIndex].ErsDeployMode {
-			case 0:
-				ersText = " "
-				break
-			case 1:
-				ersText = " "
-				break
-			case 2:
-				ersText = fmt.Sprintf("%s%s%s", BgGreen, "E", playerLineColour)
-				break
-			case 3:
-				ersText = fmt.Sprintf("%s%s%s", BgGreen, "E", playerLineColour)
-				break
-			}
-			penaltyTime := "  "
-			playerPenaltyTime := sm.LapData.LapData[playerIndex].Penalties
-			switch playerPenaltyTime {
-			case 0:
-				penaltyTime = "  "
-				break
-			default:
-				penaltyTime = fmt.Sprintf("%2d", playerPenaltyTime)
-				break
-			}
+            additionalInformation := "   "
+            ersText := ""
+            switch sm.CarStatus.CarStatusData[playerIndex].ErsDeployMode {
+            case 0:
+                ersText = " "
+                break
+            case 1:
+                ersText = " "
+                break
+            case 2:
+                ersText = fmt.Sprintf("%s%s%s", BgGreen, "E", playerLineColour)
+                break
+            case 3:
+                ersText = fmt.Sprintf("%s%s%s", BgGreen, "E", playerLineColour)
+                break
+            }
+            penaltyTime := "  "
+            playerPenaltyTime := sm.LapData.LapData[playerIndex].Penalties
+            switch playerPenaltyTime {
+            case 0:
+                penaltyTime = "  "
+                break
+            default:
+                penaltyTime = fmt.Sprintf("%2d", playerPenaltyTime)
+                break
+            }
 
-			name := getParticipantName(participant)
-			if sm.TelemetryData.CarTelemetryData[playerIndex].Drs == 1 {
-				additionalInformation = fmt.Sprintf(
-					"%s%s%s",
-					BgGreen,
-					"DRS",
-					playerLineColour,
-				)
-			}
-			if sm.LapData.LapData[playerIndex].PitStatus != 0 {
-				deltaToNext = float32(0)
-				myDeltaToLeader = float32(0)
-				additionalInformation = fmt.Sprintf(
-					"%s%s%s",
-					BgRed,
-					"PIT",
-					playerLineColour,
-				)
-			}
+            name := getParticipantName(participant)
+            if sm.TelemetryData.CarTelemetryData[playerIndex].Drs == 1 {
+                additionalInformation = fmt.Sprintf(
+                    "%s%s%s",
+                    BgGreen,
+                    "DRS",
+                    playerLineColour,
+                )
+            }
+            if sm.LapData.LapData[playerIndex].PitStatus != 0 {
+                deltaToNext = float32(0)
+                myDeltaToLeader = float32(0)
+                additionalInformation = fmt.Sprintf(
+                    "%s%s%s",
+                    BgRed,
+                    "PIT",
+                    playerLineColour,
+                )
+            }
 
-			switch sm.LapData.LapData[playerIndex].ResultStatus {
-			case 3:
-				deltaToNext = float32(0)
-				myDeltaToLeader = float32(0)
-				additionalInformation = fmt.Sprintf(
-					"%s%s%s",
-					BgYellow,
-					"FIN",
-					playerLineColour,
-				)
-				break
-			case 4:
-				deltaToNext = float32(0)
-				myDeltaToLeader = float32(0)
-				additionalInformation = fmt.Sprintf(
-					"%s%s%s",
-					BgRed,
-					"DSQ",
-					playerLineColour,
-				)
-				break
-			case 5:
-				deltaToNext = float32(0)
-				myDeltaToLeader = float32(0)
-				additionalInformation = fmt.Sprintf(
-					"%s%s%s",
-					BgRed,
-					"NCL",
-					playerLineColour,
-				)
-				break
-			case 6:
-				deltaToNext = float32(0)
-				myDeltaToLeader = float32(0)
-				additionalInformation = fmt.Sprintf(
-					"%s%s%s",
-					BgRed,
-					"OUT",
-					playerLineColour,
-				)
-			}
+            switch sm.LapData.LapData[playerIndex].ResultStatus {
+            case 3:
+                deltaToNext = float32(0)
+                myDeltaToLeader = float32(0)
+                additionalInformation = fmt.Sprintf(
+                    "%s%s%s",
+                    BgYellow,
+                    "FIN",
+                    playerLineColour,
+                )
+                break
+            case 4:
+                deltaToNext = float32(0)
+                myDeltaToLeader = float32(0)
+                additionalInformation = fmt.Sprintf(
+                    "%s%s%s",
+                    BgRed,
+                    "DSQ",
+                    playerLineColour,
+                )
+                break
+            case 5:
+                deltaToNext = float32(0)
+                myDeltaToLeader = float32(0)
+                additionalInformation = fmt.Sprintf(
+                    "%s%s%s",
+                    BgRed,
+                    "NCL",
+                    playerLineColour,
+                )
+                break
+            case 6:
+                deltaToNext = float32(0)
+                myDeltaToLeader = float32(0)
+                additionalInformation = fmt.Sprintf(
+                    "%s%s%s",
+                    BgRed,
+                    "OUT",
+                    playerLineColour,
+                )
+            }
 
-			additionalInformation = fmt.Sprintf(
-				"%s %s %s",
-				ersText,
-				additionalInformation,
-				penaltyTime,
-			)
+            additionalInformation = fmt.Sprintf(
+                "%s %s %s",
+                ersText,
+                additionalInformation,
+                penaltyTime,
+            )
 
-			lapNumber := lap.CurrentLapNum
-			lapNumberString := fmt.Sprintf("%2d", lapNumber)
-			if sm.LapData.LapData[playerIndex].CurrentLapTime < 3 {
-				lapNumberString = fmt.Sprintf(
-					"%s%s%s",
-					FgRed,
-					lapNumberString,
-					FgReset,
-				)
-			}
+            lapNumber := lap.CurrentLapNum
+            lapNumberString := fmt.Sprintf("%2d", lapNumber)
+            if sm.LapData.LapData[playerIndex].CurrentLapTime < 3 {
+                lapNumberString = fmt.Sprintf(
+                    "%s%s%s",
+                    FgRed,
+                    lapNumberString,
+                    FgReset,
+                )
+            }
 
-			textBuf += fmt.Sprintf(
-				"%2d %s   %3s | %s | %s | %s | %s || %s | %6.2f | %s |",
-				lap.CarPosition,
-				lapNumberString,
-				name,
-				lastLapTime,
-				bestS1Time,
-				bestS2Time,
-				bestS3Time,
-				floatToTimeStamp(myDeltaToLeader),
-				deltaToNext,
-				additionalInformation,
-			)
+            textBuf += fmt.Sprintf(
+                "%2d %s   %3s | %s | %s | %s | %s || %s | %6.2f | %s |",
+                lap.CarPosition,
+                lapNumberString,
+                name,
+                lastLapTime,
+                bestS1Time,
+                bestS2Time,
+                bestS3Time,
+                floatToTimeStamp(myDeltaToLeader),
+                deltaToNext,
+                additionalInformation,
+            )
 
-			textBuf += fmt.Sprint(FgReset + BgReset + "\n")
-		}
+            textBuf += fmt.Sprint(FgReset + BgReset + "\n")
+        }
 
-		f, err := os.Create("/tmp/f1.screen.tmp")
-		if err != nil {
-			panic(err)
-		}
-		_, _ = fmt.Fprint(f, textBuf)
-		_ = f.Close()
-		_ = os.Rename("/tmp/f1.screen.tmp", "/tmp/f1.screen.txt")
-	}
+        f, err := os.Create("/tmp/f1.screen.tmp")
+        if err != nil {
+            panic(err)
+        }
+        _, _ = fmt.Fprint(f, textBuf)
+        _ = f.Close()
+        _ = os.Rename("/tmp/f1.screen.tmp", "/tmp/f1.screen.txt")
+    }
 }
 
 func getParticipantName(participant statemachine.ParticipantData) string {
-	bytes := participant.Name[0:4]
-	for _, b := range bytes {
-		if b < 'A' || b > 'Z' {
-			return string(bytes)
-		}
-	}
-	return string(participant.Name[:])[0:3]
+    bytes := participant.Name[0:4]
+    for _, b := range bytes {
+        if b < 'A' || b > 'Z' {
+            return string(bytes)
+        }
+    }
+    return string(participant.Name[:])[0:3]
 }
 
 func drawMarshalZones(
-	sm statemachine.StateMachine,
-	terminalWidth uint,
-	textBuf *string,
-	showOtherPlayers bool,
+    sm statemachine.StateMachine,
+    terminalWidth uint,
+    textBuf *string,
+    showOtherPlayers bool,
 ) {
-	numZones := sm.SessionData.NumMarshalZones
-	zones := sm.SessionData.MarshalZones
+    numZones := sm.SessionData.NumMarshalZones
+    zones := sm.SessionData.MarshalZones
 
-	*textBuf += "[FLG]|"
-	usableTerminalWidth := terminalWidth - 7
+    *textBuf += "[FLG]|"
+    usableTerminalWidth := terminalWidth - 7
 
-	for currentPixel := uint(0); currentPixel < usableTerminalWidth; currentPixel++ {
-		zoneToUse := 0
-		trackProgress := float32(1) / float32(usableTerminalWidth) * float32(currentPixel)
+    for currentPixel := uint(0); currentPixel < usableTerminalWidth; currentPixel++ {
+        zoneToUse := 0
+        trackProgress := float32(1) / float32(usableTerminalWidth) * float32(currentPixel)
 
-		trackLength := sm.SessionData.TrackLength
-		trackText := " "
+        trackLength := sm.SessionData.TrackLength
+        trackText := " "
 
-		if showOtherPlayers {
-			for playerIndex := uint8(0); playerIndex < 22; playerIndex++ {
-				if playerIndex == sm.LapData.Header.PlayerCarIndex || playerIndex == sm.LapData.Header.SecondPlayerCarIndex {
-					continue
-				}
-				if sm.LapData.LapData[playerIndex].ResultStatus == 0 {
-					continue
-				}
-				lapPercentage := sm.LapData.LapData[playerIndex].LapDistance / float32(trackLength)
+        if showOtherPlayers {
+            for playerIndex := uint8(0); playerIndex < 22; playerIndex++ {
+                if playerIndex == sm.LapData.Header.PlayerCarIndex || playerIndex == sm.LapData.Header.SecondPlayerCarIndex {
+                    continue
+                }
+                if sm.LapData.LapData[playerIndex].ResultStatus == 0 {
+                    continue
+                }
+                lapPercentage := sm.LapData.LapData[playerIndex].LapDistance / float32(trackLength)
 
-				if isCorrectTrackPixel(lapPercentage, currentPixel, usableTerminalWidth) {
-					trackText = ">"
-					break
-				}
-			}
-		}
+                if isCorrectTrackPixel(lapPercentage, currentPixel, usableTerminalWidth) {
+                    trackText = ">"
+                    break
+                }
+            }
+        }
 
-		// Determine which zone data to use
-		for i, _ := range zones {
-			if zones[0].ZoneStart == 0 {
-				break
-			}
+        // Determine which zone data to use
+        for i, _ := range zones {
+            if zones[0].ZoneStart == 0 {
+                break
+            }
 
-			if isCorrectZone(i, numZones, trackProgress, zones) {
-				zoneToUse = i
-				break
-			}
-		}
+            if isCorrectZone(i, numZones, trackProgress, zones) {
+                zoneToUse = i
+                break
+            }
+        }
 
-		trackColour := BgReset
+        trackColour := BgReset
 
-		switch zones[zoneToUse].ZoneFlag {
-		case 1:
-			// trackText = " "
-			trackColour = BgGreen
-			break
-		case 2:
-			// trackText = " "
-			trackColour = BgBlue
-			break
-		case 3:
-			// trackText = " "
-			trackColour = BgYellow
-			break
-		case 4:
-			// trackText = " "
-			trackColour = BgRed
-			break
-		}
+        switch zones[zoneToUse].ZoneFlag {
+        case 1:
+            // trackText = " "
+            trackColour = BgGreen
+            break
+        case 2:
+            // trackText = " "
+            trackColour = BgBlue
+            break
+        case 3:
+            // trackText = " "
+            trackColour = BgYellow
+            break
+        case 4:
+            // trackText = " "
+            trackColour = BgRed
+            break
+        }
 
-		*textBuf += trackColour + trackText
-	}
-	*textBuf += BgReset + "|\n"
+        *textBuf += trackColour + trackText
+    }
+    *textBuf += BgReset + "|\n"
 }
 
 func getCorrectTrackPixel(progress float32, maxPixels uint) uint {
-	for current := uint(0); current < maxPixels; current++ {
-		if isCorrectTrackPixel(progress, current, maxPixels) {
-			return current
-		}
-	}
+    for current := uint(0); current < maxPixels; current++ {
+        if isCorrectTrackPixel(progress, current, maxPixels) {
+            return current
+        }
+    }
 
-	return 0
+    return 0
 }
 
 func isCorrectTrackPixel(progress float32, currentPixel uint, maxPixels uint) bool {
-	current := float32(currentPixel) / float32(maxPixels)
-	next := float32(currentPixel+1) / float32(maxPixels)
+    current := float32(currentPixel) / float32(maxPixels)
+    next := float32(currentPixel+1) / float32(maxPixels)
 
-	return progress >= current && progress <= next
+    return progress >= current && progress <= next
 }
 
 func isCorrectZone(zoneIndex int, numZones uint8, progress float32, zones [21]statemachine.MarshalZone) bool {
-	return uint8(zoneIndex+1) == numZones || progress > zones[zoneIndex].ZoneStart && progress < zones[zoneIndex+1].ZoneStart
+    return uint8(zoneIndex+1) == numZones || progress > zones[zoneIndex].ZoneStart && progress < zones[zoneIndex+1].ZoneStart
 }
 
 func drawTrackProcess(
-	sm statemachine.StateMachine,
-	playerIndex uint8,
-	terminalWidth uint,
-	textBuf *string,
+    sm statemachine.StateMachine,
+    playerIndex uint8,
+    terminalWidth uint,
+    textBuf *string,
 ) {
-	if playerIndex == 255 {
-		return
-	}
-	name := string(sm.ParticipantData.Participants[playerIndex].Name[:])[0:3]
+    if playerIndex == 255 {
+        return
+    }
+    name := string(sm.ParticipantData.Participants[playerIndex].Name[:])[0:3]
 
-	lap := sm.LapData.LapData[playerIndex]
-	trackLength := sm.SessionData.TrackLength
+    lap := sm.LapData.LapData[playerIndex]
+    trackLength := sm.SessionData.TrackLength
 
-	lapDistance := lap.LapDistance
-	if lapDistance < 0 {
-		lapDistance = 0
-	}
-	lapPercentage := lapDistance / float32(trackLength)
-	if lapPercentage >= 1 {
-		lapPercentage = 0.99
-	}
+    lapDistance := lap.LapDistance
+    if lapDistance < 0 {
+        lapDistance = 0
+    }
+    lapPercentage := lapDistance / float32(trackLength)
+    if lapPercentage >= 1 {
+        lapPercentage = 0.99
+    }
 
-	availableBlockSpace := terminalWidth - 7
-	current := getCorrectTrackPixel(lapPercentage, availableBlockSpace)
+    availableBlockSpace := terminalWidth - 7
+    current := getCorrectTrackPixel(lapPercentage, availableBlockSpace)
 
-	passed := current
-	remaining := availableBlockSpace - current - 1
+    passed := current
+    remaining := availableBlockSpace - current - 1
 
-	if remaining < 0 {
-		remaining = 0
-	}
-	if passed < 0 || passed > terminalWidth {
-		passed = 0
-	}
+    if remaining < 0 {
+        remaining = 0
+    }
+    if passed < 0 || passed > terminalWidth {
+        passed = 0
+    }
 
-	arrowHead := ">"
-	*textBuf += fmt.Sprintf("[%-3s]|"+strings.Repeat(" ", int(passed))+arrowHead, name)
-	*textBuf += fmt.Sprintf(strings.Repeat(" ", int(remaining)) + "|\n")
+    arrowHead := ">"
+    *textBuf += fmt.Sprintf("[%-3s]|"+strings.Repeat(" ", int(passed))+arrowHead, name)
+    *textBuf += fmt.Sprintf(strings.Repeat(" ", int(remaining)) + "|\n")
 }
 
 func processOptions() (
-	rest.Options,
-	TerminalOptions,
+    rest.Options,
+    TerminalOptions,
 ) {
-	restOptions := rest.DefaultOptions()
-	terminalOptions := defaultTerminalOptions()
+    restOptions := rest.DefaultOptions()
+    terminalOptions := defaultTerminalOptions()
 
-	flag.UintVar(
-		&restOptions.Port,
-		"restport",
-		8000,
-		"port to allow REST communication",
-	)
-	flag.UintVar(
-		&terminalOptions.width,
-		"terminalwidth",
-		90,
-		"terminal width used to generate table",
-	)
+    flag.UintVar(
+        &restOptions.Port,
+        "restport",
+        8000,
+        "port to allow REST communication",
+    )
+    flag.UintVar(
+        &terminalOptions.width,
+        "terminalwidth",
+        90,
+        "terminal width used to generate table",
+    )
 
-	flag.Parse()
+    flag.Parse()
 
-	return restOptions, terminalOptions
+    return restOptions, terminalOptions
 }
 
 func constantStreamWebSocket() {
-	for {
-		time.Sleep(250 * time.Millisecond)
+    for {
+        time.Sleep(250 * time.Millisecond)
 
-		marshal, err := json.Marshal(localSm)
-		if err != nil {
-			continue
-		}
+        marshal, err := json.Marshal(localSm)
+        if err != nil {
+            continue
+        }
 
-		websocket.BroadcastMessage(string(marshal))
-	}
+        websocket.BroadcastMessage(string(marshal))
+    }
 }
 
 func floatToTimeStamp(input float32) string {
-	if input < 0 {
-		input *= -1
-	}
-	minutes := uint8(input / 60)
-	seconds := input - float32(minutes*60)
-	return fmt.Sprintf("%d:%06.3f", minutes, seconds)
+    if input < 0 {
+        input *= -1
+    }
+    minutes := uint8(input / 60)
+    seconds := input - float32(minutes*60)
+    return fmt.Sprintf("%d:%06.3f", minutes, seconds)
 }

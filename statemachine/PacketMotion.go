@@ -53,8 +53,6 @@ func ProcessPacketMotion(csm *CommunicationStateMachine, state *StateMachine) {
   if buffered >= requiredSize {
     ToObject(csm.UnprocessedBuffer[:], &packetMotion)
 
-    // println(fmt.Sprintf("data motion: %+v", packetMotion.CarMotionData[0]))
-
     csm.RemoveFirstBytesFromBuffer(requiredSize, state)
   }
 }
