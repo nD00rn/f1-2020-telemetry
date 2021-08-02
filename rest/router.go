@@ -9,6 +9,7 @@ import (
 
     "github.com/gorilla/mux"
     "github.com/nD00rn/f1-2020-telemetry/statemachine"
+    "github.com/nD00rn/f1-2020-telemetry/terminal"
     "github.com/nD00rn/f1-2020-telemetry/websocket"
 )
 
@@ -32,15 +33,16 @@ func SetUpRestApiRouter(options Options, stateMachine *statemachine.StateMachine
     r := mux.NewRouter()
     r.HandleFunc("/", homeHandler).Methods("GET")
     r.HandleFunc("/socket", websocket.SocketHandler)
+    r.HandleFunc("/terminal", terminalHandler).Methods("GET")
     http.Handle("/", r)
 
     srv := &http.Server{
         Handler: r,
-        Addr:    fmt.Sprintf("%s:%d", "127.0.0.1", options.Port),
+        Addr:    fmt.Sprintf("%s:%d", "0.0.0.0", options.Port),
 
         // Good practice: enforce timeouts for servers you create!
-        WriteTimeout: 15 * time.Second,
-        ReadTimeout:  15 * time.Second,
+        WriteTimeout: 5 * time.Second,
+        ReadTimeout:  5 * time.Second,
     }
 
     // Run our server in a goroutine so that it doesn't block.
@@ -55,4 +57,9 @@ func SetUpRestApiRouter(options Options, stateMachine *statemachine.StateMachine
 func homeHandler(w http.ResponseWriter, r *http.Request) {
     w.WriteHeader(http.StatusOK)
     _ = json.NewEncoder(w).Encode(sm)
+}
+
+func terminalHandler(w http.ResponseWriter, r *http.Request) {
+    w.WriteHeader(http.StatusOK)
+    _, _ = fmt.Fprint(w, terminal.GetLastBuffer())
 }
