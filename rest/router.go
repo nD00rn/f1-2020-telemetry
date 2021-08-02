@@ -31,7 +31,7 @@ func SetUpRestApiRouter(options Options, stateMachine *statemachine.StateMachine
 
     // set up REST API
     r := mux.NewRouter()
-    r.HandleFunc("/", homeHandler).Methods("GET")
+    r.HandleFunc("/rest", homeHandler).Methods("GET")
     r.HandleFunc("/socket", websocket.SocketHandler)
     r.HandleFunc("/terminal", terminalHandler).Methods("GET")
     http.Handle("/", r)
