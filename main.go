@@ -57,13 +57,20 @@ func main() {
 
         // Write the terminal output to file if enabled in the settings
         if len(terminalOptions.Path) > 0 {
-            f, err := os.Create("/tmp/f1.screen.tmp")
+            f, err := os.Create(
+                fmt.Sprintf("%s/f1.screen.tmp", terminalOptions.Path),
+            )
+
             if err != nil {
                 panic(err)
             }
             _, _ = fmt.Fprint(f, textBuf)
             _ = f.Close()
-            _ = os.Rename("/tmp/f1.screen.tmp", "/tmp/f1.screen.txt")
+
+            _ = os.Rename(
+                fmt.Sprintf("%s/f1.screen.tmp", terminalOptions.Path),
+                fmt.Sprintf("%s/f1.screen.txt", terminalOptions.Path),
+            )
         }
     }
 }
