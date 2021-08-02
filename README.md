@@ -10,6 +10,8 @@ All current features shown in the terminal itself and there is no user interacti
 * Highlight users who have DRS active
 * Show delta between users (leader and to next car)
 * Show delta between the two players
+* Show players who are currently in the pit lane
+* Show flag colours in different marshal zones
 
 # Documentation
 
@@ -18,11 +20,12 @@ All current features shown in the terminal itself and there is no user interacti
 # Ideas for the future
 
 - [ ] Better delta calculations
-  - Current implementation has some flaws. If people know where to have documentation of how delta calculation could be implemented please let me know.
+  - Current implementation is working okay but has some flaws. If people know where to have documentation of how delta calculation could be implemented please let me know.
 
 - [x] REST API support
   - For simple data retrieval of the game while is active
-  - Returns the current state of the state machine in JSON format
+  - Returns the current state of the state machine in JSON format via the `/` endpoint
+  - Has ability to fetch rendering of screenshot via `/terminal` end point
 
 - [x] WebSocket support
   - This with the meaning that this program parses all the data, and a web browser could make it look pretty.
