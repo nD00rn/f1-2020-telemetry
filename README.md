@@ -32,3 +32,7 @@ All current features shown in the terminal itself and there is no user interacti
   - Returns the current state of the state machine in JSON format
 
 - [ ] Add support for F1 2021
+
+# Screenshots
+
+![Screenshot](images/screenshot-01.png "terminal screenshot")
