@@ -29,11 +29,13 @@ var BgWhite = "\033[47m"
 
 type Options struct {
     Width uint
+    Path string
 }
 
 func DefaultOptions() Options {
     return Options{
         Width: 84,
+        Path: "",
     }
 }
 

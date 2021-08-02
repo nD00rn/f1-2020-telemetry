@@ -55,13 +55,16 @@ func main() {
 
         textBuf := terminal.CreateBuffer(sm, csm, terminalOptions)
 
-        f, err := os.Create("/tmp/f1.screen.tmp")
-        if err != nil {
-            panic(err)
+        // Write the terminal output to file if enabled in the settings
+        if len(terminalOptions.Path) > 0 {
+            f, err := os.Create("/tmp/f1.screen.tmp")
+            if err != nil {
+                panic(err)
+            }
+            _, _ = fmt.Fprint(f, textBuf)
+            _ = f.Close()
+            _ = os.Rename("/tmp/f1.screen.tmp", "/tmp/f1.screen.txt")
         }
-        _, _ = fmt.Fprint(f, textBuf)
-        _ = f.Close()
-        _ = os.Rename("/tmp/f1.screen.tmp", "/tmp/f1.screen.txt")
     }
 }
 
@@ -91,6 +94,12 @@ func processOptions() (
         "udpport",
         f1Options.udpPort,
         "udp port to capture data on",
+    )
+    flag.StringVar(
+        &terminalOptions.Path,
+        "terminalpath",
+        "",
+        "path to store the terminal file (.tmp and .txt)",
     )
 
     flag.Parse()
